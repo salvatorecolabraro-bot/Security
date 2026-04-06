@@ -68,6 +68,58 @@ function App() {
     Longitudine: ''
   })
 
+  const [arlFileData, setArlFileData] = useState(null)
+  const [isImportingArl, setIsImportingArl] = useState(false)
+  const [arls, setArls] = useState([])
+  const [arlSearch, setArlSearch] = useState('')
+  const [loadingArl, setLoadingArl] = useState(false)
+
+  const fetchArls = async () => {
+    setLoadingArl(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const response = await axios.get(`${apiUrl}/api/arls${arlSearch ? `?search=${arlSearch}` : ''}`)
+      setArls(response.data)
+    } catch (error) {
+      console.error("Errore nel caricamento degli ARL", error)
+    }
+    setLoadingArl(false)
+  }
+
+  const handleArlUpload = async (e) => {
+    e.preventDefault()
+    if (!arlFileData) {
+      alert("Seleziona il file ARL da importare.");
+      return;
+    }
+
+    const formData = new FormData()
+    formData.append('file', arlFileData)
+
+    setIsImportingArl(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      await axios.post(`${apiUrl}/api/import-arls`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      alert("Importazione ARL completata con successo!")
+      setArlFileData(null)
+      const fileInput = document.getElementById('file-data-arl');
+      if (fileInput) fileInput.value = '';
+      
+      await fetchArls()
+    } catch (error) {
+      console.error("Errore durante l'importazione ARL", error)
+      alert("Errore durante l'importazione ARL. Controlla la console per i dettagli.")
+    }
+    setIsImportingArl(false)
+  }
+
+  const handleArlSearch = (e) => {
+    e.preventDefault()
+    fetchArls()
+  }
+
   const fetchSites = async () => {
     setLoading(true)
     try {
@@ -105,6 +157,8 @@ function App() {
     } else if (currentPage === 'stats') {
       // Quando vai alle statistiche, usa i filtri correnti
       fetchSites();
+    } else if (currentPage === 'arl') {
+      fetchArls()
     }
   }, [currentPage])
 
@@ -1003,6 +1057,15 @@ function App() {
               </div>
             </div>
             <div 
+              style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'arl' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'arl' ? '#eee' : 'transparent' }}
+              onClick={() => setCurrentPage('arl')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '15px' }}>
+                <span>🔌</span>
+                <span style={{ fontWeight: currentPage === 'arl' ? 'bold' : 'normal' }}>Gestione ARL</span>
+              </div>
+            </div>
+            <div 
               style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'stats' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'stats' ? '#eee' : 'transparent' }}
               onClick={() => setCurrentPage('stats')}
             >
@@ -1168,6 +1231,60 @@ function App() {
               )}
             </div>
 
+          </main>
+        ) : currentPage === 'arl' ? (
+          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+            <div style={{ height: '50px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', backgroundColor: '#ffffff', flexShrink: 0 }}>
+              <div style={{ fontSize: '13px', color: '#337ab7', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ color: '#555', cursor: 'pointer' }} onClick={() => setCurrentPage('home')}>🏠 Home</span>
+                <span style={{ color: '#ccc' }}>&gt;</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ color: '#555' }}>🔌</span> Gestione ARL</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <form onSubmit={handleArlUpload} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px', borderRight: '1px solid #ccc', paddingRight: '15px' }}>
+                  <input type="file" id="file-data-arl" style={{ fontSize: '11px', width: '200px' }} onChange={(e) => setArlFileData(e.target.files[0])} />
+                  <button type="submit" disabled={isImportingArl} style={{ backgroundColor: '#5cb85c', color: 'white', border: '1px solid #4cae4c', padding: '0 12px', height: '30px', fontSize: '12px', borderRadius: '3px', cursor: 'pointer' }}>
+                    {isImportingArl ? 'Caricamento...' : 'Importa ARL'}
+                  </button>
+                </form>
+                <form onSubmit={handleArlSearch} style={{ display: 'flex', height: '30px' }}>
+                  <input type="text" placeholder="Cerca ARL..." value={arlSearch} onChange={(e) => setArlSearch(e.target.value)} style={{ border: '1px solid #ccc', borderRight: 'none', padding: '0 10px', fontSize: '13px', width: '200px', outline: 'none' }} />
+                  <button type="submit" style={{ backgroundColor: '#5bc0de', border: '1px solid #46b8da', color: 'white', width: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🔍</button>
+                </form>
+              </div>
+            </div>
+            <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+              {loadingArl ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#777' }}>Caricamento ARL in corso...</div>
+              ) : arls.length > 0 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Centrale</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Tipologia</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Stato</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {arls.map((arl, index) => (
+                      <tr key={arl.codice_sito} style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}>
+                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.CENTRALE || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO} {arl.data?.CIVICO}, {arl.data?.COMUNE} ({arl.data?.PROVINCIA})</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.TIPOLOGIA_ARL || arl.data?.TIPO_SITO || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.STATO || 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#777', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
+                  Nessun ARL trovato. Importa il file ARL_SUD.csv per iniziare.
+                </div>
+              )}
+            </div>
           </main>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>

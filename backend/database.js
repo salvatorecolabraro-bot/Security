@@ -26,6 +26,21 @@ db.serialize(() => {
       console.log("Tabella 'sites' pronta.");
     }
   });
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS arls (
+      codice_sito TEXT PRIMARY KEY,
+      latitude REAL,
+      longitude REAL,
+      data TEXT
+    )
+  `, (err) => {
+    if (err) {
+      console.error("Errore creazione tabella arls:", err.message);
+    } else {
+      console.log("Tabella 'arls' pronta.");
+    }
+  });
 });
 
 module.exports = db;

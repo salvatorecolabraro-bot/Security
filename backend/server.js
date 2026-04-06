@@ -282,6 +282,164 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
   }
 });
 
+// Funzione helper per convertire le coordinate ARL dal formato 39-04-21.474 a decimale
+const convertDmsToDecimal = (dmsString) => {
+  if (!dmsString) return null;
+  // Converti a stringa per sicurezza prima di usare i metodi delle stringhe
+  const str = String(dmsString);
+  
+  // Se è già un decimale (es. 39.0726), lo ritorniamo direttamente
+  if (!str.includes('-')) return parseFloatSafe(str);
+  
+  const parts = str.split('-');
+  if (parts.length !== 3) return null;
+  
+  const degrees = parseFloatSafe(parts[0]);
+  const minutes = parseFloatSafe(parts[1]);
+  const seconds = parseFloatSafe(parts[2]);
+  
+  if (degrees === null || minutes === null || seconds === null) return null;
+  
+  const decimal = degrees + (minutes / 60) + (seconds / 3600);
+  return decimal;
+};
+
+// Funzione centrale per importare i dati ARL
+const processImportArl = (data) => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      // Svuotiamo la tabella prima di re-inserire i dati massivi
+      db.run("DELETE FROM arls", (err) => {
+        if (err) return reject(err);
+        
+        db.run("BEGIN TRANSACTION");
+        const insertStmt = db.prepare(`
+          INSERT OR REPLACE INTO arls (codice_sito, latitude, longitude, data)
+          VALUES (?, ?, ?, ?)
+        `);
+
+        const records = data;
+        
+        const insertSequential = (index) => {
+          if (index >= records.length) {
+            insertStmt.finalize();
+            db.run("COMMIT", (err) => {
+              if (err) reject(err);
+              else resolve(records.length);
+            });
+            return;
+          }
+
+          const record = records[index];
+          const codiceSito = String(record['CODICE_SITO'] || index).trim();
+          
+          const rawLat = record['LATITUDINE'];
+          const rawLng = record['LONGITUDINE'];
+
+          const lat = convertDmsToDecimal(rawLat);
+          const lng = convertDmsToDecimal(rawLng);
+
+          const stringifiedRecord = JSON.stringify(record);
+
+          insertStmt.run([
+            codiceSito,
+            lat,
+            lng,
+            stringifiedRecord
+          ], (err) => {
+            if (err) {
+              console.error("Errore inserimento riga ARL:", err);
+              insertStmt.finalize();
+              db.run("ROLLBACK");
+              return reject(err);
+            }
+            setImmediate(() => insertSequential(index + 1));
+          });
+        };
+
+        insertSequential(0);
+      });
+    });
+  });
+};
+
+// API: Import Excel/CSV per ARL
+app.post('/api/import-arls', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Nessun file caricato' });
+
+    const parseFileLocal = (fileObj) => {
+      const isCsv = fileObj.originalname.toLowerCase().endsWith('.csv');
+      if (isCsv) {
+        // Leggiamo il CSV con delimitatore ; (tipico per file italiani come ARL_SUD)
+        const content = fs.readFileSync(fileObj.path, 'utf8');
+        const parsed = Papa.parse(content, { 
+          header: true, 
+          skipEmptyLines: true, 
+          dynamicTyping: true,
+          delimiter: ";", // Forza il punto e virgola che ho visto nel file
+          transformHeader: function(header) {
+            return header ? header.trim() : '';
+          }
+        });
+        
+        // Se PapaParse fallisce e trova solo una colonna lunga (es. se era delimitato da virgola e non da punto e virgola)
+        // proviamo a fare un fallback automatico.
+        if (parsed.meta && parsed.meta.fields && parsed.meta.fields.length === 1 && parsed.meta.fields[0].includes(',')) {
+             console.log("Fallback: Riprovo a parsare il CSV ARL usando la virgola come delimitatore...");
+             return Papa.parse(content, {
+                 header: true,
+                 skipEmptyLines: true,
+                 dynamicTyping: true,
+                 delimiter: ",",
+                 transformHeader: function(header) {
+                     return header ? header.trim() : '';
+                 }
+             }).data;
+        }
+        return parsed.data;
+      } else {
+        const workbook = xlsx.readFile(fileObj.path);
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        return xlsx.utils.sheet_to_json(sheet);
+      }
+    };
+
+    const parsedData = parseFileLocal(file);
+    const count = await processImportArl(parsedData);
+    fs.unlinkSync(file.path);
+    res.json({ message: 'Dati ARL importati con successo', count: count });
+
+  } catch (error) {
+    console.error("Errore durante l'importazione ARL:", error);
+    res.status(500).json({ error: 'Errore durante l\'importazione ARL: ' + error.message });
+  }
+});
+
+// API: Get all ARLs
+app.get('/api/arls', (req, res) => {
+  const { search } = req.query;
+  
+  let query = 'SELECT codice_sito, latitude, longitude, data FROM arls WHERE 1=1';
+  const params = [];
+
+  if (search) {
+    query += ' AND (codice_sito LIKE ? OR data LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const formattedRows = rows.map(r => ({
+      ...r,
+      data: JSON.parse(r.data)
+    }));
+    res.json(formattedRows);
+  });
+});
+
 // API: Get all sites (with search/filter)
 app.get('/api/sites', (req, res) => {
   const { search, region, province, city, denominazione } = req.query;
