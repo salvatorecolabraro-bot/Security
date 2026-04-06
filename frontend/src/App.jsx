@@ -540,6 +540,19 @@ function App() {
     const data = selectedArl.data || {}
     const arlCode = selectedArl.codice_sito
 
+    // Funzione helper per formattare correttamente le coordinate per Google Maps (deve usare il punto, non la virgola)
+    const formatCoordForMaps = (coord) => {
+      if (!coord) return '';
+      return String(coord).replace(',', '.').trim();
+    };
+
+    const latToUse = data.Latitudine || data.latitudine || selectedArl.latitude;
+    const lngToUse = data.Longitudine || data.longitudine || selectedArl.longitude;
+
+    const mapsLat = formatCoordForMaps(latToUse);
+    const mapsLng = formatCoordForMaps(lngToUse);
+    const mapsLink = (mapsLat && mapsLng) ? `https://www.google.com/maps/search/?api=1&query=${mapsLat},${mapsLng}` : '';
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="it">
@@ -555,7 +568,8 @@ function App() {
           .grid-layout { display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 40px; }
           .field-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px dotted #ccc; }
           .field-label { width: 35%; font-size: 11px; font-weight: bold; color: #333; text-align: right; padding-right: 12px; text-transform: uppercase; }
-          .field-value { width: 65%; background-color: #f0f0f0; border: 1px solid #a9a9a9; padding: 4px 8px; font-size: 12px; min-height: 22px; }
+          .field-value { width: 65%; display: flex; align-items: center; gap: 8px; }
+          .field-value-input { background-color: #f0f0f0; border: 1px solid #a9a9a9; padding: 4px 8px; font-size: 12px; min-height: 22px; width: 100%; box-sizing: border-box; }
         </style>
       </head>
       <body>
@@ -564,16 +578,23 @@ function App() {
         </div>
         <div class="content-area">
           <div class="grid-layout">
-            <div class="field-row"><div class="field-label">Codice ARL:</div><div class="field-value">${arlCode}</div></div>
-            <div class="field-row"><div class="field-label">FOL:</div><div class="field-value">${data.FOL || ''}</div></div>
-            <div class="field-row"><div class="field-label">FF:</div><div class="field-value">${data.FF || ''}</div></div>
-            <div class="field-row"><div class="field-label">Provincia:</div><div class="field-value">${data.PROVINCIA || ''}</div></div>
-            <div class="field-row"><div class="field-label">Comune:</div><div class="field-value">${data.COMUNE || ''}</div></div>
-            <div class="field-row"><div class="field-label">Indirizzo:</div><div class="field-value">${data.INDIRIZZO || ''}</div></div>
-            <div class="field-row"><div class="field-label">Civico:</div><div class="field-value">${data.CIVICO || ''}</div></div>
-            <div class="field-row"><div class="field-label">CAP:</div><div class="field-value">${data.CAP || ''}</div></div>
-            <div class="field-row"><div class="field-label">Latitudine:</div><div class="field-value">${selectedArl.latitude || ''}</div></div>
-            <div class="field-row"><div class="field-label">Longitudine:</div><div class="field-value">${selectedArl.longitude || ''}</div></div>
+            <div class="field-row"><div class="field-label">Codice ARL:</div><div class="field-value"><div class="field-value-input">${arlCode}</div></div></div>
+            <div class="field-row"><div class="field-label">Centrale:</div><div class="field-value"><div class="field-value-input">${data.CENTRALE || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">FOL:</div><div class="field-value"><div class="field-value-input">${data.FOL || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">FF:</div><div class="field-value"><div class="field-value-input">${data.FF || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">Provincia:</div><div class="field-value"><div class="field-value-input">${data.PROVINCIA || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">Comune:</div><div class="field-value"><div class="field-value-input">${data.COMUNE || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">Indirizzo:</div><div class="field-value"><div class="field-value-input">${data.INDIRIZZO || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">Civico:</div><div class="field-value"><div class="field-value-input">${data.CIVICO || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">CAP:</div><div class="field-value"><div class="field-value-input">${data.CAP || ''}</div></div></div>
+            <div class="field-row"><div class="field-label">Latitudine:</div><div class="field-value"><div class="field-value-input">${latToUse || ''}</div></div></div>
+            <div class="field-row">
+              <div class="field-label">Longitudine:</div>
+              <div class="field-value">
+                <div class="field-value-input">${lngToUse || ''}</div>
+                ${mapsLink ? `<a href="${mapsLink}" target="_blank" style="color: #2563eb; font-size: 12px; font-weight: bold; text-decoration: underline; white-space: nowrap;">Apri Mappa</a>` : ''}
+              </div>
+            </div>
           </div>
         </div>
         <script>
@@ -1441,32 +1462,43 @@ function App() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FOL</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FF</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Provincia</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Comune</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {arls.map((arl, index) => (
-                      <tr 
-                        key={arl.codice_sito} 
-                        style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc', cursor: 'pointer' }}
-                        onClick={() => setSelectedArl(arl)}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8f4f8'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#fff' : '#fcfcfc'}
-                      >
-                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.FOL || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.FF || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.PROVINCIA || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.COMUNE || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO || 'N/A'} {arl.data?.CIVICO || ''}</td>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Centrale</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FOL</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FF</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Provincia</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Comune</th>
+                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
+                        <th style={{ padding: '12px 15px', textAlign: 'right', color: '#333' }}>Azioni</th>
                       </tr>
-                    ))}
-                  </tbody>
+                    </thead>
+                    <tbody>
+                      {arls.map((arl, index) => (
+                        <tr 
+                          key={arl.codice_sito} 
+                          style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}
+                        >
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.CENTRALE || 'N/A'}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.FOL || 'N/A'}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.FF || 'N/A'}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.PROVINCIA || 'N/A'}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.COMUNE || 'N/A'}</td>
+                          <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO || 'N/A'} {arl.data?.CIVICO || ''}</td>
+                          <td style={{ padding: '8px 15px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2px' }}>
+                              <button 
+                                onClick={() => setSelectedArl(arl)} 
+                                style={{ backgroundColor: '#5bc0de', color: 'white', border: 'none', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '2px' }}
+                                title="Dettagli"
+                              >
+                                🔍
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                 </table>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
