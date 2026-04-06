@@ -429,23 +429,55 @@ app.post('/api/import-arls', upload.single('file'), async (req, res) => {
 
 // API: Get all ARLs
 app.get('/api/arls', (req, res) => {
-  const { search } = req.query;
+  const { search, fol, ff, provincia, comune, indirizzo } = req.query;
   
-  let query = 'SELECT codice_sito, latitude, longitude, data FROM arls WHERE 1=1';
-  const params = [];
-
-  if (search) {
-    query += ' AND (codice_sito LIKE ? OR data LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  db.all(query, params, (err, rows) => {
+  db.all('SELECT codice_sito, latitude, longitude, data FROM arls', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    const formattedRows = rows.map(r => ({
+    
+    let formattedRows = rows.map(r => ({
       ...r,
-      data: JSON.parse(r.data)
+      data: JSON.parse(r.data || '{}')
     }));
+
+    if (search) {
+      const s = search.toLowerCase();
+      formattedRows = formattedRows.filter(r => 
+        r.codice_sito?.toLowerCase().includes(s) || 
+        JSON.stringify(r.data).toLowerCase().includes(s)
+      );
+    }
+    
+    if (fol) formattedRows = formattedRows.filter(r => r.data.FOL?.toString().trim() === fol);
+    if (ff) formattedRows = formattedRows.filter(r => r.data.FF?.toString().trim() === ff);
+    if (provincia) formattedRows = formattedRows.filter(r => r.data.PROVINCIA?.toString().trim().toLowerCase() === provincia.toLowerCase());
+    if (comune) formattedRows = formattedRows.filter(r => r.data.COMUNE?.toString().trim().toLowerCase() === comune.toLowerCase());
+    if (indirizzo) formattedRows = formattedRows.filter(r => r.data.INDIRIZZO?.toString().trim().toLowerCase() === indirizzo.toLowerCase());
+
     res.json(formattedRows);
+  });
+});
+
+// API: Get filter options for ARLs
+app.get('/api/arl-filter-options', (req, res) => {
+  db.all('SELECT data FROM arls', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    
+    const options = rows.map(r => {
+      let data = {};
+      try {
+        data = JSON.parse(r.data || '{}');
+      } catch(e) {}
+
+      return {
+        fol: data.FOL ? data.FOL.toString().trim() : '',
+        ff: data.FF ? data.FF.toString().trim() : '',
+        provincia: data.PROVINCIA ? data.PROVINCIA.toString().trim() : '',
+        comune: data.COMUNE ? data.COMUNE.toString().trim() : '',
+        indirizzo: data.INDIRIZZO ? data.INDIRIZZO.toString().trim() : ''
+      };
+    });
+    
+    res.json(options);
   });
 });
 

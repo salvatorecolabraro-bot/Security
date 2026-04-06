@@ -68,22 +68,50 @@ function App() {
     Longitudine: ''
   })
 
+  // Stati per ARL
   const [arlFileData, setArlFileData] = useState(null)
   const [isImportingArl, setIsImportingArl] = useState(false)
   const [arls, setArls] = useState([])
   const [arlSearch, setArlSearch] = useState('')
   const [loadingArl, setLoadingArl] = useState(false)
+  
+  // Stati filtri ARL
+  const [arlFolFilter, setArlFolFilter] = useState('')
+  const [arlFfFilter, setArlFfFilter] = useState('')
+  const [arlProvinciaFilter, setArlProvinciaFilter] = useState('')
+  const [arlComuneFilter, setArlComuneFilter] = useState('')
+  const [arlIndirizzoFilter, setArlIndirizzoFilter] = useState('')
+  const [arlFilterOptions, setArlFilterOptions] = useState([])
+  const [selectedArl, setSelectedArl] = useState(null)
 
   const fetchArls = async () => {
     setLoadingArl(true)
     try {
+      const params = new URLSearchParams()
+      if (arlSearch) params.append('search', arlSearch)
+      if (arlFolFilter) params.append('fol', arlFolFilter)
+      if (arlFfFilter) params.append('ff', arlFfFilter)
+      if (arlProvinciaFilter) params.append('provincia', arlProvinciaFilter)
+      if (arlComuneFilter) params.append('comune', arlComuneFilter)
+      if (arlIndirizzoFilter) params.append('indirizzo', arlIndirizzoFilter)
+
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-      const response = await axios.get(`${apiUrl}/api/arls${arlSearch ? `?search=${arlSearch}` : ''}`)
+      const response = await axios.get(`${apiUrl}/api/arls?${params.toString()}`)
       setArls(response.data)
     } catch (error) {
       console.error("Errore nel caricamento degli ARL", error)
     }
     setLoadingArl(false)
+  }
+
+  const fetchArlFilterOptions = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const response = await axios.get(`${apiUrl}/api/arl-filter-options`)
+      setArlFilterOptions(response.data)
+    } catch (error) {
+      console.error("Errore nel caricamento delle opzioni filtro ARL", error)
+    }
   }
 
   const handleArlUpload = async (e) => {
@@ -159,6 +187,7 @@ function App() {
       fetchSites();
     } else if (currentPage === 'arl') {
       fetchArls()
+      fetchArlFilterOptions()
     }
   }, [currentPage])
 
@@ -199,6 +228,40 @@ function App() {
     ...[...new Set(filterOptions
       .filter(o => (!regionFilter || o.region === regionFilter) && (!provinceFilter || o.province === provinceFilter) && (!cityFilter || o.city === cityFilter))
       .map(o => o.denominazione).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
+  ];
+
+  // Derived options for ARL cascading dropdowns (FOL, FF, Provincia, Comune, Indirizzo)
+  const availableArlFol = [
+    { value: '', label: 'Tutti i FOL' },
+    ...[...new Set(arlFilterOptions.map(o => o.fol).filter(Boolean))].sort().map(r => ({ value: r, label: r }))
+  ];
+
+  const availableArlFf = [
+    { value: '', label: 'Tutti i FF' },
+    ...[...new Set(arlFilterOptions
+      .filter(o => !arlFolFilter || o.fol === arlFolFilter)
+      .map(o => o.ff).filter(Boolean))].sort().map(p => ({ value: p, label: p }))
+  ];
+
+  const availableArlProvincia = [
+    { value: '', label: 'Tutte le Province' },
+    ...[...new Set(arlFilterOptions
+      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter))
+      .map(o => o.provincia).filter(Boolean))].sort().map(c => ({ value: c, label: c }))
+  ];
+
+  const availableArlComune = [
+    { value: '', label: 'Tutti i Comuni' },
+    ...[...new Set(arlFilterOptions
+      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter) && (!arlProvinciaFilter || o.provincia === arlProvinciaFilter))
+      .map(o => o.comune).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
+  ];
+
+  const availableArlIndirizzo = [
+    { value: '', label: 'Tutti gli Indirizzi' },
+    ...[...new Set(arlFilterOptions
+      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter) && (!arlProvinciaFilter || o.provincia === arlProvinciaFilter) && (!arlComuneFilter || o.comune === arlComuneFilter))
+      .map(o => o.indirizzo).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
   ];
 
   const customSelectStyles = {
@@ -470,6 +533,81 @@ function App() {
         </div>
       </div>
     )
+  }
+
+  const renderArlDetail = () => {
+    if (!selectedArl) return null
+    const data = selectedArl.data || {}
+    const arlCode = selectedArl.codice_sito
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="it">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dettaglio ARL - ${arlCode}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+          .header-container { background-color: #337ab7; padding: 15px 20px; border-radius: 8px 8px 0 0; color: white; margin-bottom: 0; }
+          .header-title { font-size: 20px; font-weight: 600; }
+          .content-area { background: white; padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          .grid-layout { display: grid; grid-template-columns: 1fr 1fr; row-gap: 8px; column-gap: 40px; }
+          .field-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px dotted #ccc; }
+          .field-label { width: 35%; font-size: 11px; font-weight: bold; color: #333; text-align: right; padding-right: 12px; text-transform: uppercase; }
+          .field-value { width: 65%; background-color: #f0f0f0; border: 1px solid #a9a9a9; padding: 4px 8px; font-size: 12px; min-height: 22px; }
+        </style>
+      </head>
+      <body>
+        <div class="header-container">
+          <h1 class="header-title" style="margin: 0;">Dettaglio ARL: ${arlCode}</h1>
+        </div>
+        <div class="content-area">
+          <div class="grid-layout">
+            <div class="field-row"><div class="field-label">Codice ARL:</div><div class="field-value">${arlCode}</div></div>
+            <div class="field-row"><div class="field-label">FOL:</div><div class="field-value">${data.FOL || ''}</div></div>
+            <div class="field-row"><div class="field-label">FF:</div><div class="field-value">${data.FF || ''}</div></div>
+            <div class="field-row"><div class="field-label">Provincia:</div><div class="field-value">${data.PROVINCIA || ''}</div></div>
+            <div class="field-row"><div class="field-label">Comune:</div><div class="field-value">${data.COMUNE || ''}</div></div>
+            <div class="field-row"><div class="field-label">Indirizzo:</div><div class="field-value">${data.INDIRIZZO || ''}</div></div>
+            <div class="field-row"><div class="field-label">Civico:</div><div class="field-value">${data.CIVICO || ''}</div></div>
+            <div class="field-row"><div class="field-label">CAP:</div><div class="field-value">${data.CAP || ''}</div></div>
+            <div class="field-row"><div class="field-label">Latitudine:</div><div class="field-value">${selectedArl.latitude || ''}</div></div>
+            <div class="field-row"><div class="field-label">Longitudine:</div><div class="field-value">${selectedArl.longitude || ''}</div></div>
+          </div>
+        </div>
+        <script>
+          // Close popup gracefully
+          window.onbeforeunload = function() {
+            window.opener.postMessage({ type: 'ARL_POPUP_CLOSED' }, '*');
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    const popupWidth = 800;
+    const popupHeight = 500;
+    const left = window.screen.width / 2 - popupWidth / 2;
+    const top = window.screen.height / 2 - popupHeight / 2;
+    
+    const popup = window.open(
+      '', 
+      `_arl_detail_${arlCode}`,
+      `width=${popupWidth},height=${popupHeight},top=${top},left=${left},scrollbars=yes,resizable=yes`
+    );
+
+    if (popup) {
+      popup.document.open();
+      popup.document.write(htmlContent);
+      popup.document.close();
+      setTimeout(() => setSelectedArl(null), 100);
+    } else {
+      alert("Il browser ha bloccato il pop-up.");
+      setSelectedArl(null);
+    }
+
+    return null;
   }
 
   const renderSiteDetail = () => {
@@ -1079,32 +1217,75 @@ function App() {
             <div style={{ padding: '15px', borderBottom: '1px solid #e7e7e7', backgroundColor: '#fff' }}>
               <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '10px', textTransform: 'uppercase' }}>Filtri Ricerca</h3>
               
-              <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <Select
-                  styles={customSelectStyles} placeholder="Regione" isClearable options={availableRegions}
-                  value={availableRegions.find(r => r.value === regionFilter) || null}
-                  onChange={(s) => { setRegionFilter(s ? s.value : ''); setProvinceFilter(''); setCityFilter(''); setDenominazioneFilter(''); }}
-                />
-                <Select
-                  styles={customSelectStyles} placeholder="Provincia" isClearable options={availableProvinces}
-                  value={availableProvinces.find(p => p.value === provinceFilter) || null}
-                  onChange={(s) => { setProvinceFilter(s ? s.value : ''); setCityFilter(''); setDenominazioneFilter(''); }}
-                />
-                <Select
-                  styles={customSelectStyles} placeholder="Città" isClearable options={availableCities}
-                  value={availableCities.find(c => c.value === cityFilter) || null}
-                  onChange={(s) => { setCityFilter(s ? s.value : ''); setDenominazioneFilter(''); }}
-                />
-                <Select
-                  styles={customSelectStyles} placeholder="Sito/Denominazione" isClearable options={availableDenominazioni}
-                  value={availableDenominazioni.find(d => d.value === denominazioneFilter) || null}
-                  onChange={(s) => setDenominazioneFilter(s ? s.value : '')}
-                />
-                <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
-                  <button type="submit" style={{ flex: 1, backgroundColor: '#337ab7', color: 'white', border: 'none', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Applica</button>
-                  <button type="button" onClick={() => { setRegionFilter(''); setProvinceFilter(''); setCityFilter(''); setDenominazioneFilter(''); setSearch(''); fetchSites(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
-                </div>
-              </form>
+              {currentPage === 'arl' ? (
+                <form onSubmit={handleArlSearch} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Select
+                    styles={customSelectStyles} placeholder="FOL" isClearable options={availableArlFol}
+                    value={availableArlFol.find(r => r.value === arlFolFilter) || null}
+                    onChange={(s) => { setArlFolFilter(s ? s.value : ''); setArlFfFilter(''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="FF" isClearable options={availableArlFf}
+                    value={availableArlFf.find(p => p.value === arlFfFilter) || null}
+                    onChange={(s) => { setArlFfFilter(s ? s.value : ''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Provincia" isClearable options={availableArlProvincia}
+                    value={availableArlProvincia.find(c => c.value === arlProvinciaFilter) || null}
+                    onChange={(s) => { setArlProvinciaFilter(s ? s.value : ''); setArlComuneFilter(''); setArlIndirizzoFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Comune" isClearable options={availableArlComune}
+                    value={availableArlComune.find(c => c.value === arlComuneFilter) || null}
+                    onChange={(s) => { setArlComuneFilter(s ? s.value : ''); setArlIndirizzoFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Indirizzo" isClearable options={availableArlIndirizzo}
+                    value={availableArlIndirizzo.find(d => d.value === arlIndirizzoFilter) || null}
+                    onChange={(s) => setArlIndirizzoFilter(s ? s.value : '')}
+                  />
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Cerca ARL..." 
+                      value={arlSearch} 
+                      onChange={(e) => setArlSearch(e.target.value)}
+                      style={{ flex: 1, padding: '6px', border: '1px solid #d1d5db', borderRadius: '3px', fontSize: '11px' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                    <button type="submit" style={{ flex: 1, backgroundColor: '#337ab7', color: 'white', border: 'none', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Applica</button>
+                    <button type="button" onClick={() => { setArlFolFilter(''); setArlFfFilter(''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); setArlSearch(''); fetchArls(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Select
+                    styles={customSelectStyles} placeholder="Regione" isClearable options={availableRegions}
+                    value={availableRegions.find(r => r.value === regionFilter) || null}
+                    onChange={(s) => { setRegionFilter(s ? s.value : ''); setProvinceFilter(''); setCityFilter(''); setDenominazioneFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Provincia" isClearable options={availableProvinces}
+                    value={availableProvinces.find(p => p.value === provinceFilter) || null}
+                    onChange={(s) => { setProvinceFilter(s ? s.value : ''); setCityFilter(''); setDenominazioneFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Città" isClearable options={availableCities}
+                    value={availableCities.find(c => c.value === cityFilter) || null}
+                    onChange={(s) => { setCityFilter(s ? s.value : ''); setDenominazioneFilter(''); }}
+                  />
+                  <Select
+                    styles={customSelectStyles} placeholder="Sito/Denominazione" isClearable options={availableDenominazioni}
+                    value={availableDenominazioni.find(d => d.value === denominazioneFilter) || null}
+                    onChange={(s) => setDenominazioneFilter(s ? s.value : '')}
+                  />
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                    <button type="submit" style={{ flex: 1, backgroundColor: '#337ab7', color: 'white', border: 'none', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Applica</button>
+                    <button type="button" onClick={() => { setRegionFilter(''); setProvinceFilter(''); setCityFilter(''); setDenominazioneFilter(''); setSearch(''); fetchSites(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* Sezione Importa personalizzata */}
@@ -1261,27 +1442,35 @@ function App() {
                   <thead>
                     <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
                       <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Centrale</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FOL</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FF</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Provincia</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Comune</th>
                       <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Tipologia</th>
-                      <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Stato</th>
                     </tr>
                   </thead>
                   <tbody>
                     {arls.map((arl, index) => (
-                      <tr key={arl.codice_sito} style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}>
+                      <tr 
+                        key={arl.codice_sito} 
+                        style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc', cursor: 'pointer' }}
+                        onClick={() => setSelectedArl(arl)}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8f4f8'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#fff' : '#fcfcfc'}
+                      >
                         <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.CENTRALE || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO} {arl.data?.CIVICO}, {arl.data?.COMUNE} ({arl.data?.PROVINCIA})</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.TIPOLOGIA_ARL || arl.data?.TIPO_SITO || 'N/A'}</td>
-                        <td style={{ padding: '10px' }}>{arl.data?.STATO || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.FOL || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.FF || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.PROVINCIA || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.COMUNE || 'N/A'}</td>
+                        <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO || 'N/A'} {arl.data?.CIVICO || ''}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
-                  Nessun ARL trovato. Importa il file ARL_SUD.csv per iniziare.
+                  Nessun ARL trovato. Modifica i filtri o importa il file ARL_SUD.csv per iniziare.
                 </div>
               )}
             </div>
@@ -1320,6 +1509,7 @@ function App() {
 
       {/* Modale Dettaglio Nativo */}
       {renderSiteDetail()}
+      {renderArlDetail()}
 
       {/* Modale Aggiunta Nuovo Immobile */}
       {renderAddModal()}
