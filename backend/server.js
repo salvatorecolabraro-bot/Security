@@ -403,7 +403,16 @@ app.post('/api/import-arls', upload.single('file'), async (req, res) => {
         const workbook = xlsx.readFile(fileObj.path);
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        return xlsx.utils.sheet_to_json(sheet);
+        const rawData = xlsx.utils.sheet_to_json(sheet);
+        return rawData.map(row => {
+          const cleanRow = {};
+          for (const key in row) {
+            if (Object.hasOwnProperty.call(row, key) && key) {
+              cleanRow[String(key).trim()] = row[key];
+            }
+          }
+          return cleanRow;
+        });
       }
     };
 
