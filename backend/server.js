@@ -6,15 +6,57 @@ const Papa = require('papaparse');
 const fs = require('fs');
 const db = require('./database');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = 'fibercop_secret_key_12345'; // in produzione andrebbe nel .env
 
 app.use(cors());
 app.use(express.json());
 
 // Set up multer for file uploads
 const upload = multer({ dest: 'uploads/' });
+
+// Middleware per verificare il JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// Middleware per verificare il ruolo admin
+const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ error: 'Accesso negato. Richiesto ruolo amministratore.' });
+  }
+};
+
+// API: Login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(401).json({ error: 'Credenziali non valide' });
+
+    const validPassword = bcrypt.compareSync(password, user.password);
+    if (!validPassword) return res.status(401).json({ error: 'Credenziali non valide' });
+
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, role: user.role, username: user.username });
+  });
+});
 
 // Function to safely extract float
 const parseFloatSafe = (val) => {
@@ -228,7 +270,7 @@ autoSyncOnStartup();
 
 
 // API: Import Excel Manuale
-app.post('/api/import', upload.single('file'), async (req, res) => {
+app.post('/api/import', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) {
@@ -601,7 +643,7 @@ app.get('/api/sites/:site_code', (req, res) => {
 });
 
 // API: Create new site
-app.post('/api/sites', (req, res) => {
+app.post('/api/sites', authenticateToken, requireAdmin, (req, res) => {
   const data = req.body;
   const site_code = data.site_code || data['CodiceImmobile'] || data['SAP Code'];
   
@@ -676,7 +718,7 @@ app.put('/api/sites/:site_code', (req, res) => {
 });
 
 // API: Delete site
-app.delete('/api/sites/:site_code', (req, res) => {
+app.delete('/api/sites/:site_code', authenticateToken, requireAdmin, (req, res) => {
   db.run('DELETE FROM sites WHERE site_code=?', [req.params.site_code], function(err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Sito eliminato' });

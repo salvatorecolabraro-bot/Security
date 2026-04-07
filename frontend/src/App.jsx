@@ -5,6 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import Statistics from './Statistics'
+import * as XLSX from 'xlsx'
+import Login from './Login'
 
 // Fix for default marker icon in react-leaflet
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -36,23 +38,57 @@ const FieldRow = ({ label, value, addon }) => (
 );
 
 function App() {
+  // Auth state
+  const [token, setToken] = useState(localStorage.getItem('token') || null)
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null)
+  const [username, setUsername] = useState(localStorage.getItem('username') || null)
+
+  // Configure axios to always send token
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
+    setToken(null);
+    setUserRole(null);
+    setUsername(null);
+  };
+
   const [sites, setSites] = useState([])
-  const [search, setSearch] = useState('')
-  const [regionFilter, setRegionFilter] = useState('')
-  const [provinceFilter, setProvinceFilter] = useState('')
-  const [cityFilter, setCityFilter] = useState('')
-  const [denominazioneFilter, setDenominazioneFilter] = useState('')
+  const [search, setSearch] = useState(localStorage.getItem('filter_search') || '')
+  const [regionFilter, setRegionFilter] = useState(localStorage.getItem('filter_region') || '')
+  const [provinceFilter, setProvinceFilter] = useState(localStorage.getItem('filter_province') || '')
+  const [cityFilter, setCityFilter] = useState(localStorage.getItem('filter_city') || '')
+  const [denominazioneFilter, setDenominazioneFilter] = useState(localStorage.getItem('filter_denominazione') || '')
   const [filterOptions, setFilterOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedSite, setSelectedSite] = useState(null)
   const [isImporting, setIsImporting] = useState(false)
   const [fileData, setFileData] = useState(null)
-  const [viewMode, setViewMode] = useState('table') // 'card' or 'table'
+  const [viewMode, setViewMode] = useState(localStorage.getItem('viewMode') || 'table') // 'card' or 'table'
   const [activeTab, setActiveTab] = useState('anagrafica') // 'anagrafica', 'rete', 'classificazione', 'sicurezza'
-  const [currentPage, setCurrentPage] = useState('home') // 'home' or 'stats'
+  const [currentPage, setCurrentPage] = useState(localStorage.getItem('currentPage') || 'home') // 'home' or 'stats'
   const [isSidebarOpen, setIsSidebarOpen] = useState(true) // Stato per aprire/chiudere la sidebar
   const [isAddModalOpen, setIsAddModalOpen] = useState(false) // Stato per la modale di aggiunta
   
+  // Salva i filtri e lo stato UI nel localStorage quando cambiano
+  useEffect(() => {
+    localStorage.setItem('filter_search', search);
+    localStorage.setItem('filter_region', regionFilter);
+    localStorage.setItem('filter_province', provinceFilter);
+    localStorage.setItem('filter_city', cityFilter);
+    localStorage.setItem('filter_denominazione', denominazioneFilter);
+    localStorage.setItem('viewMode', viewMode);
+    localStorage.setItem('currentPage', currentPage);
+  }, [search, regionFilter, provinceFilter, cityFilter, denominazioneFilter, viewMode, currentPage]);
+
   // Stato per i dati del nuovo immobile
   const [newSiteData, setNewSiteData] = useState({
     site_code: '',
@@ -76,19 +112,31 @@ function App() {
   const [loadingArl, setLoadingArl] = useState(false)
   
   // Stati filtri ARL
-  const [arlFolFilter, setArlFolFilter] = useState('')
-  const [arlFfFilter, setArlFfFilter] = useState('')
-  const [arlProvinciaFilter, setArlProvinciaFilter] = useState('')
-  const [arlComuneFilter, setArlComuneFilter] = useState('')
-  const [arlIndirizzoFilter, setArlIndirizzoFilter] = useState('')
+  const [arlFolFilter, setArlFolFilter] = useState(localStorage.getItem('arl_filter_fol') || '')
+  const [arlFfFilter, setArlFfFilter] = useState(localStorage.getItem('arl_filter_ff') || '')
+  const [arlProvinciaFilter, setArlProvinciaFilter] = useState(localStorage.getItem('arl_filter_provincia') || '')
+  const [arlComuneFilter, setArlComuneFilter] = useState(localStorage.getItem('arl_filter_comune') || '')
+  const [arlIndirizzoFilter, setArlIndirizzoFilter] = useState(localStorage.getItem('arl_filter_indirizzo') || '')
+  const [arlSearch, setArlSearch] = useState(localStorage.getItem('arl_filter_search') || '')
   const [arlFilterOptions, setArlFilterOptions] = useState([])
   const [selectedArl, setSelectedArl] = useState(null)
   
   // Paginazione ARL
-  const [arlPage, setArlPage] = useState(1)
+  const [arlPage, setArlPage] = useState(parseInt(localStorage.getItem('arl_page')) || 1)
   const [arlTotalPages, setArlTotalPages] = useState(1)
   const [arlTotalRecords, setArlTotalRecords] = useState(0)
-  const [arlViewMode, setArlViewMode] = useState('table') // 'table' or 'card'
+  const [arlViewMode, setArlViewMode] = useState(localStorage.getItem('arlViewMode') || 'table') // 'table' or 'card'
+
+  useEffect(() => {
+    localStorage.setItem('arl_filter_fol', arlFolFilter);
+    localStorage.setItem('arl_filter_ff', arlFfFilter);
+    localStorage.setItem('arl_filter_provincia', arlProvinciaFilter);
+    localStorage.setItem('arl_filter_comune', arlComuneFilter);
+    localStorage.setItem('arl_filter_indirizzo', arlIndirizzoFilter);
+    localStorage.setItem('arl_filter_search', arlSearch);
+    localStorage.setItem('arl_page', arlPage);
+    localStorage.setItem('arlViewMode', arlViewMode);
+  }, [arlFolFilter, arlFfFilter, arlProvinciaFilter, arlComuneFilter, arlIndirizzoFilter, arlSearch, arlPage, arlViewMode]);
 
   const fetchArls = async () => {
     setLoadingArl(true)
@@ -221,6 +269,14 @@ function App() {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
+
+  if (!token) {
+    return <Login onLoginSuccess={(t, r, u) => {
+      setToken(t);
+      setUserRole(r);
+      setUsername(u);
+    }} />;
+  }
 
   // Derived options for cascading dropdowns
   const availableRegions = [
@@ -471,6 +527,50 @@ function App() {
         </div>
       </div>
     );
+  };
+
+  const handleExportExcel = () => {
+    let dataToExport = [];
+    let fileName = '';
+
+    if (currentPage === 'home') {
+      dataToExport = sites.map(s => ({
+        'Codice Immobile': s.site_code,
+        'Regione': s.merged_data?.Regione || '',
+        'Provincia': s.merged_data?.Provincia || '',
+        'Comune': s.merged_data?.Comune || '',
+        'Indirizzo': s.merged_data?.Indirizzo || '',
+        'Denominazione': s.merged_data?.Denominazione || s.merged_data?.Nome || '',
+        'Latitudine': s.latitude || '',
+        'Longitudine': s.longitude || '',
+        'Stato': s.status || ''
+      }));
+      fileName = `Export_Sedi_${new Date().toISOString().split('T')[0]}.xlsx`;
+    } else if (currentPage === 'arl') {
+      dataToExport = arls.map(a => ({
+        'Codice ARL': a.codice_sito,
+        'Centrale': a.data?.CENTRALE || '',
+        'FOL': a.data?.FOL || '',
+        'FF': a.data?.FF || '',
+        'Provincia': a.data?.PROVINCIA || '',
+        'Comune': a.data?.COMUNE || '',
+        'Indirizzo': a.data?.INDIRIZZO || '',
+        'Civico': a.data?.CIVICO || '',
+        'Latitudine': a.data?.Latitudine || a.data?.latitudine || a.latitude || '',
+        'Longitudine': a.data?.Longitudine || a.data?.longitudine || a.longitude || ''
+      }));
+      fileName = `Export_ARL_${new Date().toISOString().split('T')[0]}.xlsx`;
+    }
+
+    if (dataToExport.length === 0) {
+      alert("Nessun dato da esportare");
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dati");
+    XLSX.writeFile(wb, fileName);
   };
 
   const renderTable = () => {
@@ -1217,13 +1317,13 @@ function App() {
           {/* User Profile */}
           <div style={{ backgroundColor: '#2b3e50', display: 'flex', alignItems: 'center', padding: '0 15px', gap: '10px' }}>
             <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#fff', overflow: 'hidden' }}>
-              <img src="https://ui-avatars.com/api/?name=User&background=random" alt="user" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={`https://ui-avatars.com/api/?name=${username || 'User'}&background=random`} alt="user" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Utente Corrente</span>
-              <span style={{ fontSize: '10px', color: '#aab2bd' }}>ATS - FIBERCOP</span>
+              <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>{username}</span>
+              <span style={{ fontSize: '10px', color: '#aab2bd' }}>Ruolo: {userRole}</span>
             </div>
-            <span style={{ fontSize: '12px', marginLeft: '5px' }}>▼</span>
+            <button onClick={handleLogout} style={{ marginLeft: '10px', background: 'none', border: '1px solid #aab2bd', color: '#aab2bd', cursor: 'pointer', fontSize: '11px', borderRadius: '3px', padding: '2px 5px' }}>Esci</button>
           </div>
 
         </div>
@@ -1366,6 +1466,7 @@ function App() {
             </div>
 
             {/* Sezione Importa personalizzata */}
+            {userRole === 'admin' && (
             <div style={{ padding: '15px', backgroundColor: '#fff' }}>
               <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '10px', textTransform: 'uppercase' }}>Importa Dati</h3>
               
@@ -1401,6 +1502,7 @@ function App() {
                 </button>
               </form>
             </div>
+            )}
 
           </div>
         </aside>
@@ -1429,13 +1531,22 @@ function App() {
 
               {/* Actions Area (Search & Add) */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button 
-                  onClick={() => setIsAddModalOpen(true)}
-                  style={{ backgroundColor: '#5cb85c', border: '1px solid #4cae4c', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
-                >
-                  <span>+</span> Nuovo Immobile
-                </button>
+                {userRole === 'admin' && (
+                  <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    style={{ backgroundColor: '#5cb85c', border: '1px solid #4cae4c', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
+                  >
+                    <span>+</span> Nuovo Immobile
+                  </button>
+                )}
                 
+                <button 
+                  onClick={handleExportExcel}
+                  style={{ backgroundColor: '#f0ad4e', border: '1px solid #eea236', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
+                >
+                  <span>⬇️</span> Esporta Excel
+                </button>
+
                 <form onSubmit={handleSearch} style={{ display: 'flex', height: '30px' }}>
                   <input 
                     type="text" 
@@ -1499,12 +1610,22 @@ function App() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ color: '#555' }}>🔌</span> Gestione ARL</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <form onSubmit={handleArlUpload} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px', borderRight: '1px solid #ccc', paddingRight: '15px' }}>
-                  <input type="file" id="file-data-arl" style={{ fontSize: '11px', width: '200px' }} onChange={(e) => setArlFileData(e.target.files[0])} />
-                  <button type="submit" disabled={isImportingArl} style={{ backgroundColor: '#5cb85c', color: 'white', border: '1px solid #4cae4c', padding: '0 12px', height: '30px', fontSize: '12px', borderRadius: '3px', cursor: 'pointer' }}>
-                    {isImportingArl ? 'Caricamento...' : 'Importa ARL'}
-                  </button>
-                </form>
+                {userRole === 'admin' && (
+                  <form onSubmit={handleArlUpload} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px', borderRight: '1px solid #ccc', paddingRight: '15px' }}>
+                    <input type="file" id="file-data-arl" style={{ fontSize: '11px', width: '200px' }} onChange={(e) => setArlFileData(e.target.files[0])} />
+                    <button type="submit" disabled={isImportingArl} style={{ backgroundColor: '#5cb85c', color: 'white', border: '1px solid #4cae4c', padding: '0 12px', height: '30px', fontSize: '12px', borderRadius: '3px', cursor: 'pointer' }}>
+                      {isImportingArl ? 'Caricamento...' : 'Importa ARL'}
+                    </button>
+                  </form>
+                )}
+                
+                <button 
+                  onClick={handleExportExcel}
+                  style={{ backgroundColor: '#f0ad4e', border: '1px solid #eea236', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px', marginRight: '15px' }}
+                >
+                  <span>⬇️</span> Esporta Excel
+                </button>
+
                 <form onSubmit={handleArlSearch} style={{ display: 'flex', height: '30px' }}>
                   <input type="text" placeholder="Cerca ARL..." value={arlSearch} onChange={(e) => setArlSearch(e.target.value)} style={{ border: '1px solid #ccc', borderRight: 'none', padding: '0 10px', fontSize: '13px', width: '200px', outline: 'none' }} />
                   <button type="submit" style={{ backgroundColor: '#5bc0de', border: '1px solid #46b8da', color: 'white', width: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🔍</button>
