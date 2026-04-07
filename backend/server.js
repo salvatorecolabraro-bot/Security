@@ -486,8 +486,8 @@ app.get('/api/arls', (req, res) => {
 
 // API: Get filter options for ARLs
 app.get('/api/arl-filter-options', (req, res) => {
-  // Use distinct values directly from the columns for performance
-  db.all('SELECT DISTINCT fol, ff, provincia, comune, indirizzo FROM arls', [], (err, rows) => {
+  // Use distinct values directly from the columns for performance, removing empty/null values
+  db.all('SELECT DISTINCT fol, ff, provincia, comune, indirizzo FROM arls WHERE fol != "" OR ff != "" OR provincia != "" OR comune != "" OR indirizzo != ""', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     
     const options = rows.map(r => ({
