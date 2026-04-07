@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -21,6 +22,7 @@ export default function UserManagement() {
       setUsers(response.data);
     } catch (err) {
       setError("Errore nel caricamento della lista utenti.");
+      toast.error("Errore nel caricamento della lista utenti.");
     } finally {
       setLoading(false);
     }
@@ -34,6 +36,13 @@ export default function UserManagement() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    
+    if (!username || !password) {
+      setError('Username e password sono obbligatori.');
+      toast.warning('Username e password sono obbligatori.');
+      return;
+    }
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
       const token = localStorage.getItem('token');
@@ -41,12 +50,14 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(`Utente "${username}" creato con successo!`);
+      toast.success(`Utente "${username}" creato con successo!`);
       setUsername('');
       setPassword('');
       setRole('viewer');
       fetchUsers();
     } catch (err) {
       setError(err.response?.data?.error || "Errore durante la creazione dell'utente.");
+      toast.error(err.response?.data?.error || "Errore durante la creazione dell'utente.");
     }
   };
 
@@ -63,9 +74,11 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(`Utente "${name}" eliminato.`);
+      toast.success(`Utente "${name}" eliminato.`);
       fetchUsers();
     } catch (err) {
       setError(err.response?.data?.error || "Errore durante l'eliminazione dell'utente.");
+      toast.error(err.response?.data?.error || "Errore durante l'eliminazione dell'utente.");
     }
   };
 

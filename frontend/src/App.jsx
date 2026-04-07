@@ -11,6 +11,8 @@ import Statistics from './Statistics'
 import * as XLSX from 'xlsx'
 import Login from './Login'
 import UserManagement from './UserManagement'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const ArlMapEvents = ({ onZoomChange, onBoundsChange }) => {
   const map = useMapEvents({
@@ -103,6 +105,18 @@ function App() {
   const [viewMode, setViewMode] = useState(localStorage.getItem('viewMode') || 'table') // 'card' or 'table'
   const [activeTab, setActiveTab] = useState('anagrafica') // 'anagrafica', 'rete', 'classificazione', 'sicurezza'
   const [currentPage, setCurrentPage] = useState(localStorage.getItem('currentPage') || 'home') // 'home' or 'stats'
+  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') === 'dark')
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.body.classList.remove('dark-mode')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [isDarkMode])
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true) // Stato per aprire/chiudere la sidebar
   const [isAddModalOpen, setIsAddModalOpen] = useState(false) // Stato per la modale di aggiunta
   
@@ -252,7 +266,7 @@ function App() {
   const handleArlUpload = async (e) => {
     e.preventDefault()
     if (!arlFileData) {
-      alert("Seleziona il file ARL da importare.");
+      toast.warning("Seleziona il file ARL da importare.");
       return;
     }
 
@@ -265,7 +279,7 @@ function App() {
       await axios.post(`${apiUrl}/api/import-arls`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      alert("Importazione ARL completata con successo!")
+      toast.success("Importazione ARL completata con successo!")
       setArlFileData(null)
       const fileInput = document.getElementById('file-data-arl');
       if (fileInput) fileInput.value = '';
@@ -273,7 +287,7 @@ function App() {
       await fetchArls()
     } catch (error) {
       console.error("Errore durante l'importazione ARL", error)
-      alert("Errore durante l'importazione ARL. Controlla la console per i dettagli.")
+      toast.error("Errore durante l'importazione ARL. Controlla la console per i dettagli.")
     }
     setIsImportingArl(false)
   }
@@ -422,7 +436,7 @@ function App() {
   const handleFileUpload = async (e) => {
     e.preventDefault()
     if (!fileData) {
-      alert("Seleziona il file da importare.");
+      toast.warning("Seleziona il file da importare.");
       return;
     }
 
@@ -435,7 +449,7 @@ function App() {
       await axios.post(`${apiUrl}/api/import`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      alert("Importazione completata con successo!")
+      toast.success("Importazione completata con successo!")
       setFileData(null)
       // reset file inputs se esistono
       const fileInput = document.getElementById('file-data');
@@ -459,7 +473,7 @@ function App() {
       
     } catch (error) {
       console.error("Errore durante l'importazione", error)
-      alert("Errore durante l'importazione. Controlla la console per i dettagli.")
+      toast.error("Errore durante l'importazione. Controlla la console per i dettagli.")
     }
     setIsImporting(false)
   }
@@ -467,7 +481,7 @@ function App() {
   const handleAddSiteSubmit = async (e) => {
     e.preventDefault();
     if (!newSiteData.site_code) {
-      alert("Il Codice Immobile è obbligatorio");
+      toast.warning("Il Codice Immobile è obbligatorio");
       return;
     }
 
@@ -476,7 +490,7 @@ function App() {
       const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       await axios.put(`${apiUrl}/api/sites/${newSiteData.site_code}`, newSiteData);
       
-      alert("Immobile aggiunto/aggiornato con successo!");
+      toast.success("Immobile aggiunto/aggiornato con successo!");
       setIsAddModalOpen(false);
       
       // Resetta il form
@@ -489,7 +503,7 @@ function App() {
       fetchFilterOptions();
     } catch (error) {
       console.error("Errore salvataggio nuovo immobile:", error);
-      alert("Errore durante il salvataggio.");
+      toast.error("Errore durante il salvataggio.");
     }
   };
 
@@ -624,7 +638,7 @@ function App() {
     }
 
     if (dataToExport.length === 0) {
-      alert("Nessun dato da esportare");
+      toast.info("Nessun dato da esportare");
       return;
     }
 
@@ -725,7 +739,7 @@ function App() {
           setSelectedArl(res.data);
         } catch (err) {
           console.error('Errore nel recupero dettagli ARL:', err);
-          alert('Impossibile caricare i dettagli.');
+          toast.error('Impossibile caricare i dettagli.');
         }
       }}>
         <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold', color: '#000' }}>
@@ -833,7 +847,7 @@ function App() {
       popup.document.close();
       setTimeout(() => setSelectedArl(null), 100);
     } else {
-      alert("Il browser ha bloccato il pop-up.");
+      toast.warning("Il browser ha bloccato il pop-up.");
       setSelectedArl(null);
     }
 
@@ -1271,6 +1285,7 @@ function App() {
               });
               
               if (response.ok) {
+                // Notifica nel popup (questo script gira in una nuova finestra, usiamo alert base qui per sicurezza o iniettiamo toastify)
                 alert('Dati aggiornati con successo!');
                 // Ricarica la pagina principale per mostrare i dati aggiornati
                 if (window.opener && !window.opener.closed) {
@@ -1349,7 +1364,93 @@ function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }}>
+    <div className={`app-container ${isDarkMode ? 'dark-mode-app' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: isDarkMode ? '#121212' : '#ffffff', fontFamily: 'Arial, sans-serif' }}>
+      <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover />
+      <style>{`
+        .dark-mode-app {
+          background-color: #121212 !important;
+          color: #e0e0e0 !important;
+        }
+        .dark-mode-app main, .dark-mode-app aside, .dark-mode-app .white-bg {
+          background-color: #1e1e1e !important;
+          border-color: #333 !important;
+          color: #e0e0e0 !important;
+        }
+        .dark-mode-app table {
+          background-color: #1e1e1e !important;
+          color: #e0e0e0 !important;
+        }
+        .dark-mode-app th {
+          background-color: #2c2c2c !important;
+          color: #e0e0e0 !important;
+          border-bottom: 2px solid #444 !important;
+        }
+        .dark-mode-app td {
+          border-bottom: 1px solid #333 !important;
+          color: #e0e0e0 !important;
+        }
+        .dark-mode-app tr {
+          background-color: transparent !important;
+        }
+        .dark-mode-app tr:nth-child(even) {
+          background-color: #252525 !important;
+        }
+        .dark-mode-app input, .dark-mode-app select {
+          background-color: #2c2c2c !important;
+          color: #e0e0e0 !important;
+          border-color: #444 !important;
+        }
+        /* Drawer styles */
+        .side-drawer-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: rgba(0,0,0,0.5);
+          z-index: 9998;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s ease-in-out;
+        }
+        .side-drawer-overlay.open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .side-drawer {
+          position: fixed;
+          top: 0;
+          right: -450px;
+          width: 400px;
+          max-width: 90vw;
+          height: 100vh;
+          background-color: #fff;
+          box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+          transition: right 0.3s ease-in-out;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+        }
+        .side-drawer.open {
+          right: 0;
+        }
+        .dark-mode-app .side-drawer {
+          background-color: #1e1e1e;
+          box-shadow: -2px 0 8px rgba(0,0,0,0.8);
+          color: #e0e0e0;
+        }
+        .drawer-close-btn {
+          position: absolute;
+          top: 15px;
+          right: 15px;
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          color: #333;
+        }
+        .dark-mode-app .drawer-close-btn {
+          color: #e0e0e0;
+        }
+      `}</style>
       
       {/* HEADER EXACT REPLICA */}
       <header style={{ backgroundColor: '#6c757d', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', height: '50px', flexShrink: 0 }}>
@@ -1378,6 +1479,16 @@ function App() {
         {/* Right Info */}
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
           
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 15px', borderRight: '1px solid #8e959b' }}>
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)} 
+              style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title={isDarkMode ? "Passa al tema chiaro" : "Passa al tema scuro"}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
+
           {/* Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 15px', borderRight: '1px solid #8e959b' }}>
             {currentPage === 'home' && userRole === 'admin' && (
@@ -1655,7 +1766,7 @@ function App() {
                      </div>
                      <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <TileLayer url={isDarkMode ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"} />
                         {sites.map(site => {
                           if (site.latitude && site.longitude) {
                             return (
@@ -1750,7 +1861,7 @@ function App() {
                                         setSelectedArl(res.data);
                                       } catch (err) {
                                         console.error('Errore nel recupero dettagli ARL:', err);
-                                        alert('Impossibile caricare i dettagli.');
+                                        toast.error('Impossibile caricare i dettagli.');
                                       }
                                     }}
                                     style={{ backgroundColor: '#5bc0de', color: 'white', border: 'none', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '2px' }}
@@ -1841,10 +1952,6 @@ function App() {
           </div>
         )}
       </div>
-
-      {/* Modale Dettaglio Nativo */}
-      {renderSiteDetail()}
-      {renderArlDetail()}
 
       {/* Modale Aggiunta Nuovo Immobile */}
       {renderAddModal()}

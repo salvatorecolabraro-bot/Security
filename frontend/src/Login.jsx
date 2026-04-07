@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -23,11 +24,18 @@ function Login({ onLoginSuccess }) {
       localStorage.setItem('userRole', role);
       localStorage.setItem('username', resUser);
       
+      toast.success(`Benvenuto ${resUser}!`);
       // Chiama il callback per aggiornare lo stato di App
       onLoginSuccess(token, role, resUser);
     } catch (err) {
-      console.error(err);
-      setError('Credenziali non valide o errore di connessione.');
+      console.error("Login error:", err);
+      if (err.response && err.response.data && err.response.data.error) {
+        setError(err.response.data.error);
+        toast.error(err.response.data.error);
+      } else {
+        setError('Credenziali non valide o errore di connessione.');
+        toast.error('Credenziali non valide o errore di connessione.');
+      }
     } finally {
       setLoading(false);
     }
