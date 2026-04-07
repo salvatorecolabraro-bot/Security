@@ -522,7 +522,7 @@ app.post('/api/import-arls', upload.single('file'), async (req, res) => {
 
 // API: Get all ARLs
 app.get('/api/arls', (req, res) => {
-  const { search, fol, ff, provincia, comune, indirizzo, page = 1, limit = 100 } = req.query;
+  const { search, fol, ff, provincia, comune, indirizzo, page = 1, limit = 100, bbox } = req.query;
   
   let baseQuery = ' FROM arls WHERE 1=1';
   const params = [];
@@ -538,6 +538,16 @@ app.get('/api/arls', (req, res) => {
   if (provincia) { baseQuery += ' AND LOWER(provincia) = LOWER(?)'; params.push(provincia); }
   if (comune) { baseQuery += ' AND LOWER(comune) = LOWER(?)'; params.push(comune); }
   if (indirizzo) { baseQuery += ' AND LOWER(indirizzo) = LOWER(?)'; params.push(indirizzo); }
+
+  // Filtro Geografico Live (Bounding Box)
+  if (bbox) {
+    // bbox expected format: minLng,minLat,maxLng,maxLat
+    const [minLng, minLat, maxLng, maxLat] = bbox.split(',').map(parseFloat);
+    if (!isNaN(minLng) && !isNaN(minLat) && !isNaN(maxLng) && !isNaN(maxLat)) {
+      baseQuery += ' AND latitude >= ? AND latitude <= ? AND longitude >= ? AND longitude <= ?';
+      params.push(minLat, maxLat, minLng, maxLng);
+    }
+  }
 
   const countQuery = 'SELECT COUNT(*) as total' + baseQuery;
   const dataQuery = 'SELECT codice_sito, latitude, longitude, data' + baseQuery + ' LIMIT ? OFFSET ?';

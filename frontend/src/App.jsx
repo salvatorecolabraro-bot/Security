@@ -12,12 +12,27 @@ import * as XLSX from 'xlsx'
 import Login from './Login'
 import UserManagement from './UserManagement'
 
-const ArlMapEvents = ({ onZoomChange }) => {
+const ArlMapEvents = ({ onZoomChange, onBoundsChange }) => {
   const map = useMapEvents({
     zoomend: () => {
       onZoomChange(map.getZoom());
+      const bounds = map.getBounds();
+      onBoundsChange(`${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
+    },
+    moveend: () => {
+      const bounds = map.getBounds();
+      onBoundsChange(`${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
     }
   });
+  
+  // Set initial bounds
+  useEffect(() => {
+    if (map) {
+      const bounds = map.getBounds();
+      onBoundsChange(`${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
+    }
+  }, [map]);
+
   return null;
 };
 
@@ -139,6 +154,7 @@ function App() {
   const [arlTotalRecords, setArlTotalRecords] = useState(0)
   const [arlViewMode, setArlViewMode] = useState(localStorage.getItem('arlViewMode') || 'table') // 'table' or 'card'
   const [arlMapZoom, setArlMapZoom] = useState(6)
+  const [arlMapBounds, setArlMapBounds] = useState(null)
 
   useEffect(() => {
     localStorage.setItem('arl_filter_fol', arlFolFilter);
@@ -176,6 +192,9 @@ function App() {
           return
         }
         params.append('limit', 'all')
+        if (arlMapBounds) {
+          params.append('bbox', arlMapBounds)
+        }
       } else {
         params.append('page', arlPage)
         params.append('limit', 100) // Carichiamo 100 record per pagina
@@ -205,7 +224,7 @@ function App() {
     if (currentPage === 'arl') {
       fetchArls()
     }
-  }, [arlPage, arlViewMode, arlMapZoom])
+  }, [arlPage, arlViewMode, arlMapZoom, arlMapBounds])
 
   const fetchArlFilterOptions = async () => {
     try {
@@ -1778,7 +1797,7 @@ function App() {
                     <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <ArlMapEvents onZoomChange={setArlMapZoom} />
+                        <ArlMapEvents onZoomChange={setArlMapZoom} onBoundsChange={setArlMapBounds} />
                         {(arlMapZoom < 8 && !(arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch)) ? (
                           [
                             { name: 'Campania', pos: [40.8518, 14.2681] },
