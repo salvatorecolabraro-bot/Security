@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Select from 'react-select'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import MarkerClusterGroup from 'react-leaflet-cluster'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import L from 'leaflet'
 import Statistics from './Statistics'
 import * as XLSX from 'xlsx'
@@ -1588,23 +1591,25 @@ function App() {
                        {sites.map(renderCard)}
                      </div>
                      <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
-                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                         {sites.map(site => {
-                           if (site.latitude && site.longitude) {
-                             return (
-                               <Marker key={site.site_code} position={[site.latitude, site.longitude]}>
-                                 <Popup>
-                                   <strong>[{site.site_code}]</strong><br/>{site.merged_data?.Nome || 'Sito'}<br/>
-                                   <button onClick={() => setSelectedSite(site)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
-                                 </Popup>
-                               </Marker>
-                             )
-                           }
-                           return null;
-                         })}
-                       </MapContainer>
-                     </div>
+                      <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <MarkerClusterGroup chunkedLoading>
+                          {sites.map(site => {
+                            if (site.latitude && site.longitude) {
+                              return (
+                                <Marker key={site.site_code} position={[site.latitude, site.longitude]}>
+                                  <Popup>
+                                    <strong>[{site.site_code}]</strong><br/>{site.merged_data?.Nome || 'Sito'}<br/>
+                                    <button onClick={() => setSelectedSite(site)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
+                                  </Popup>
+                                </Marker>
+                              )
+                            }
+                            return null;
+                          })}
+                        </MarkerClusterGroup>
+                      </MapContainer>
+                    </div>
                    </div>
                 )
               ) : (
@@ -1731,26 +1736,28 @@ function App() {
                     <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        {arls.map(arl => {
-                          const latToUse = arl.data?.Latitudine || arl.data?.latitudine || arl.latitude;
-                          const lngToUse = arl.data?.Longitudine || arl.data?.longitudine || arl.longitude;
-                          
-                          // Normalize coordinates
-                          const lat = latToUse ? parseFloat(String(latToUse).replace(',', '.')) : null;
-                          const lng = lngToUse ? parseFloat(String(lngToUse).replace(',', '.')) : null;
+                        <MarkerClusterGroup chunkedLoading>
+                          {arls.map(arl => {
+                            const latToUse = arl.data?.Latitudine || arl.data?.latitudine || arl.latitude;
+                            const lngToUse = arl.data?.Longitudine || arl.data?.longitudine || arl.longitude;
+                            
+                            // Normalize coordinates
+                            const lat = latToUse ? parseFloat(String(latToUse).replace(',', '.')) : null;
+                            const lng = lngToUse ? parseFloat(String(lngToUse).replace(',', '.')) : null;
 
-                          if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                            return (
-                              <Marker key={arl.codice_sito} position={[lat, lng]}>
-                                <Popup>
-                                  <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
-                                  <button onClick={() => setSelectedArl(arl)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
-                                </Popup>
-                              </Marker>
-                            )
-                          }
-                          return null;
-                        })}
+                            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                              return (
+                                <Marker key={arl.codice_sito} position={[lat, lng]}>
+                                  <Popup>
+                                    <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
+                                    <button onClick={() => setSelectedArl(arl)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
+                                  </Popup>
+                                </Marker>
+                              )
+                            }
+                            return null;
+                          })}
+                        </MarkerClusterGroup>
                       </MapContainer>
                     </div>
                   </div>
