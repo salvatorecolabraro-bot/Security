@@ -1236,7 +1236,7 @@ function App() {
         {isSidebarOpen && (
         <aside style={{ width: '220px', backgroundColor: '#f9f9f9', borderRight: '1px solid #e7e7e7', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          {/* Top 3 Buttons */}
+          {/* Top Buttons */}
           <div style={{ display: 'flex', height: '40px' }}>
             <button 
               style={{ flex: 1, backgroundColor: '#5cb85c', border: 'none', borderRight: '1px solid #4cae4c', color: 'white', cursor: 'pointer' }} 
@@ -1246,16 +1246,18 @@ function App() {
               }}
             >📋</button>
             <button 
-              style={{ flex: 1, backgroundColor: '#5bc0de', border: 'none', borderRight: '1px solid #46b8da', color: 'white', cursor: 'pointer' }} 
+              style={{ flex: 1, backgroundColor: '#5bc0de', border: 'none', borderRight: currentPage !== 'arl' ? '1px solid #46b8da' : 'none', color: 'white', cursor: 'pointer' }} 
               onClick={() => { 
                 if (currentPage === 'arl') { setArlViewMode('card'); } 
                 else { setCurrentPage('home'); setViewMode('card'); }
               }}
             >🌍</button>
-            <button 
-              style={{ flex: 1, backgroundColor: '#d9534f', border: 'none', color: 'white', cursor: 'pointer' }} 
-              onClick={() => setCurrentPage('stats')}
-            >📊</button>
+            {currentPage !== 'arl' && (
+              <button 
+                style={{ flex: 1, backgroundColor: '#d9534f', border: 'none', color: 'white', cursor: 'pointer' }} 
+                onClick={() => setCurrentPage('stats')}
+              >📊</button>
+            )}
           </div>
 
           {/* Menu items (Simulated) */}
