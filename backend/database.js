@@ -32,6 +32,11 @@ db.serialize(() => {
       codice_sito TEXT PRIMARY KEY,
       latitude REAL,
       longitude REAL,
+      fol TEXT,
+      ff TEXT,
+      provincia TEXT,
+      comune TEXT,
+      indirizzo TEXT,
       data TEXT
     )
   `, (err) => {
@@ -39,6 +44,20 @@ db.serialize(() => {
       console.error("Errore creazione tabella arls:", err.message);
     } else {
       console.log("Tabella 'arls' pronta.");
+      // Check if old table needs to be altered to add the new columns
+      db.all("PRAGMA table_info(arls)", (err, rows) => {
+        if (!err && rows) {
+          const columns = rows.map(r => r.name);
+          if (!columns.includes('fol')) {
+            console.log("Aggiornamento schema tabella arls...");
+            db.run("ALTER TABLE arls ADD COLUMN fol TEXT");
+            db.run("ALTER TABLE arls ADD COLUMN ff TEXT");
+            db.run("ALTER TABLE arls ADD COLUMN provincia TEXT");
+            db.run("ALTER TABLE arls ADD COLUMN comune TEXT");
+            db.run("ALTER TABLE arls ADD COLUMN indirizzo TEXT");
+          }
+        }
+      });
     }
   });
 });

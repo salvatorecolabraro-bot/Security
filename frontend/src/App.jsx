@@ -83,6 +83,11 @@ function App() {
   const [arlIndirizzoFilter, setArlIndirizzoFilter] = useState('')
   const [arlFilterOptions, setArlFilterOptions] = useState([])
   const [selectedArl, setSelectedArl] = useState(null)
+  
+  // Paginazione ARL
+  const [arlPage, setArlPage] = useState(1)
+  const [arlTotalPages, setArlTotalPages] = useState(1)
+  const [arlTotalRecords, setArlTotalRecords] = useState(0)
 
   const fetchArls = async () => {
     setLoadingArl(true)
@@ -94,15 +99,26 @@ function App() {
       if (arlProvinciaFilter) params.append('provincia', arlProvinciaFilter)
       if (arlComuneFilter) params.append('comune', arlComuneFilter)
       if (arlIndirizzoFilter) params.append('indirizzo', arlIndirizzoFilter)
+      params.append('page', arlPage)
+      params.append('limit', 100) // Carichiamo 100 record per pagina
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
       const response = await axios.get(`${apiUrl}/api/arls?${params.toString()}`)
-      setArls(response.data)
+      setArls(response.data.data)
+      setArlTotalPages(response.data.totalPages)
+      setArlTotalRecords(response.data.total)
     } catch (error) {
       console.error("Errore nel caricamento degli ARL", error)
     }
     setLoadingArl(false)
   }
+
+  // Effetto per ricaricare quando cambia la pagina
+  useEffect(() => {
+    if (currentPage === 'arl') {
+      fetchArls()
+    }
+  }, [arlPage])
 
   const fetchArlFilterOptions = async () => {
     try {
@@ -145,6 +161,7 @@ function App() {
 
   const handleArlSearch = (e) => {
     e.preventDefault()
+    setArlPage(1)
     fetchArls()
   }
 
@@ -186,6 +203,7 @@ function App() {
       // Quando vai alle statistiche, usa i filtri correnti
       fetchSites();
     } else if (currentPage === 'arl') {
+      setArlPage(1) // Reset page on tab switch
       fetchArls()
       fetchArlFilterOptions()
     }
@@ -1276,7 +1294,7 @@ function App() {
                   </div>
                   <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
                     <button type="submit" style={{ flex: 1, backgroundColor: '#337ab7', color: 'white', border: 'none', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Applica</button>
-                    <button type="button" onClick={() => { setArlFolFilter(''); setArlFfFilter(''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); setArlSearch(''); fetchArls(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
+                    <button type="button" onClick={() => { setArlFolFilter(''); setArlFfFilter(''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); setArlSearch(''); setArlPage(1); fetchArls(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
                   </div>
                 </form>
               ) : (
@@ -1459,47 +1477,75 @@ function App() {
               {loadingArl ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777' }}>Caricamento ARL in corso...</div>
               ) : arls.length > 0 ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Centrale</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FOL</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FF</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Provincia</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Comune</th>
-                        <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
-                        <th style={{ padding: '12px 15px', textAlign: 'right', color: '#333' }}>Azioni</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {arls.map((arl, index) => (
-                        <tr 
-                          key={arl.codice_sito} 
-                          style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}
-                        >
-                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.CENTRALE || 'N/A'}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.FOL || 'N/A'}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.FF || 'N/A'}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.PROVINCIA || 'N/A'}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.COMUNE || 'N/A'}</td>
-                          <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO || 'N/A'} {arl.data?.CIVICO || ''}</td>
-                          <td style={{ padding: '8px 15px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2px' }}>
-                              <button 
-                                onClick={() => setSelectedArl(arl)} 
-                                style={{ backgroundColor: '#5bc0de', color: 'white', border: 'none', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '2px' }}
-                                title="Dettagli"
-                              >
-                                🔍
-                              </button>
-                            </div>
-                          </td>
+                <div>
+                  <div style={{ marginBottom: '10px', fontSize: '13px', color: '#555' }}>
+                    Trovati <strong>{arlTotalRecords}</strong> ARL
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', backgroundColor: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Codice ARL</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Centrale</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FOL</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>FF</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Provincia</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Comune</th>
+                          <th style={{ padding: '12px 10px', textAlign: 'left', color: '#333' }}>Indirizzo</th>
+                          <th style={{ padding: '12px 15px', textAlign: 'right', color: '#333' }}>Azioni</th>
                         </tr>
-                      ))}
-                    </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {arls.map((arl, index) => (
+                          <tr 
+                            key={arl.codice_sito} 
+                            style={{ borderBottom: '1px solid #eee', backgroundColor: index % 2 === 0 ? '#fff' : '#fcfcfc' }}
+                          >
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: '#337ab7' }}>{arl.codice_sito}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.CENTRALE || 'N/A'}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.FOL || 'N/A'}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.FF || 'N/A'}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.PROVINCIA || 'N/A'}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.COMUNE || 'N/A'}</td>
+                            <td style={{ padding: '10px' }}>{arl.data?.INDIRIZZO || 'N/A'} {arl.data?.CIVICO || ''}</td>
+                            <td style={{ padding: '8px 15px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2px' }}>
+                                <button 
+                                  onClick={() => setSelectedArl(arl)} 
+                                  style={{ backgroundColor: '#5bc0de', color: 'white', border: 'none', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '2px' }}
+                                  title="Dettagli"
+                                >
+                                  🔍
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                  </table>
+                  
+                  {/* Controlli di paginazione */}
+                  {arlTotalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '20px' }}>
+                      <button 
+                        onClick={() => setArlPage(p => Math.max(1, p - 1))}
+                        disabled={arlPage === 1}
+                        style={{ padding: '8px 15px', backgroundColor: arlPage === 1 ? '#e0e0e0' : '#337ab7', color: arlPage === 1 ? '#999' : 'white', border: 'none', borderRadius: '4px', cursor: arlPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
+                      >
+                        &laquo; Precedente
+                      </button>
+                      <span style={{ fontSize: '14px', color: '#555' }}>
+                        Pagina <strong>{arlPage}</strong> di {arlTotalPages}
+                      </span>
+                      <button 
+                        onClick={() => setArlPage(p => Math.min(arlTotalPages, p + 1))}
+                        disabled={arlPage === arlTotalPages}
+                        style={{ padding: '8px 15px', backgroundColor: arlPage === arlTotalPages ? '#e0e0e0' : '#337ab7', color: arlPage === arlTotalPages ? '#999' : 'white', border: 'none', borderRadius: '4px', cursor: arlPage === arlTotalPages ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
+                      >
+                        Successiva &raquo;
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
                   Nessun ARL trovato. Modifica i filtri o importa il file ARL_SUD.csv per iniziare.

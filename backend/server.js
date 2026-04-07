@@ -314,12 +314,12 @@ const processImportArl = (data) => {
         
         db.run("BEGIN TRANSACTION");
         const insertStmt = db.prepare(`
-          INSERT OR REPLACE INTO arls (codice_sito, latitude, longitude, data)
-          VALUES (?, ?, ?, ?)
+          INSERT OR REPLACE INTO arls (codice_sito, latitude, longitude, fol, ff, provincia, comune, indirizzo, data)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const records = data;
-        
+
         const insertSequential = (index) => {
           if (index >= records.length) {
             insertStmt.finalize();
@@ -338,6 +338,12 @@ const processImportArl = (data) => {
 
           const lat = convertDmsToDecimal(rawLat);
           const lng = convertDmsToDecimal(rawLng);
+          
+          const fol = record['FOL'] ? String(record['FOL']).trim() : '';
+          const ff = record['FF'] ? String(record['FF']).trim() : '';
+          const provincia = record['PROVINCIA'] ? String(record['PROVINCIA']).trim() : '';
+          const comune = record['COMUNE'] ? String(record['COMUNE']).trim() : '';
+          const indirizzo = record['INDIRIZZO'] ? String(record['INDIRIZZO']).trim() : '';
 
           const stringifiedRecord = JSON.stringify(record);
 
@@ -345,6 +351,11 @@ const processImportArl = (data) => {
             codiceSito,
             lat,
             lng,
+            fol,
+            ff,
+            provincia,
+            comune,
+            indirizzo,
             stringifiedRecord
           ], (err) => {
             if (err) {
@@ -429,53 +440,63 @@ app.post('/api/import-arls', upload.single('file'), async (req, res) => {
 
 // API: Get all ARLs
 app.get('/api/arls', (req, res) => {
-  const { search, fol, ff, provincia, comune, indirizzo } = req.query;
+  const { search, fol, ff, provincia, comune, indirizzo, page = 1, limit = 100 } = req.query;
   
-  db.all('SELECT codice_sito, latitude, longitude, data FROM arls', [], (err, rows) => {
+  let baseQuery = ' FROM arls WHERE 1=1';
+  const params = [];
+
+  if (search) {
+    baseQuery += ' AND (codice_sito LIKE ? OR fol LIKE ? OR ff LIKE ? OR provincia LIKE ? OR comune LIKE ? OR indirizzo LIKE ?)';
+    const searchParam = `%${search}%`;
+    params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+  }
+  
+  if (fol) { baseQuery += ' AND fol = ?'; params.push(fol); }
+  if (ff) { baseQuery += ' AND ff = ?'; params.push(ff); }
+  if (provincia) { baseQuery += ' AND LOWER(provincia) = LOWER(?)'; params.push(provincia); }
+  if (comune) { baseQuery += ' AND LOWER(comune) = LOWER(?)'; params.push(comune); }
+  if (indirizzo) { baseQuery += ' AND LOWER(indirizzo) = LOWER(?)'; params.push(indirizzo); }
+
+  const countQuery = 'SELECT COUNT(*) as total' + baseQuery;
+  const dataQuery = 'SELECT codice_sito, latitude, longitude, data' + baseQuery + ' LIMIT ? OFFSET ?';
+
+  db.get(countQuery, params, (err, countRow) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    let formattedRows = rows.map(r => ({
-      ...r,
-      data: JSON.parse(r.data || '{}')
-    }));
-
-    if (search) {
-      const s = search.toLowerCase();
-      formattedRows = formattedRows.filter(r => 
-        r.codice_sito?.toLowerCase().includes(s) || 
-        JSON.stringify(r.data).toLowerCase().includes(s)
-      );
-    }
+    const total = countRow.total;
+    const offset = (page - 1) * limit;
     
-    if (fol) formattedRows = formattedRows.filter(r => r.data.FOL?.toString().trim() === fol);
-    if (ff) formattedRows = formattedRows.filter(r => r.data.FF?.toString().trim() === ff);
-    if (provincia) formattedRows = formattedRows.filter(r => r.data.PROVINCIA?.toString().trim().toLowerCase() === provincia.toLowerCase());
-    if (comune) formattedRows = formattedRows.filter(r => r.data.COMUNE?.toString().trim().toLowerCase() === comune.toLowerCase());
-    if (indirizzo) formattedRows = formattedRows.filter(r => r.data.INDIRIZZO?.toString().trim().toLowerCase() === indirizzo.toLowerCase());
+    db.all(dataQuery, [...params, parseInt(limit), parseInt(offset)], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      const formattedRows = rows.map(r => ({
+        ...r,
+        data: JSON.parse(r.data || '{}')
+      }));
 
-    res.json(formattedRows);
+      res.json({
+        data: formattedRows,
+        total: total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / limit)
+      });
+    });
   });
 });
 
 // API: Get filter options for ARLs
 app.get('/api/arl-filter-options', (req, res) => {
-  db.all('SELECT data FROM arls', [], (err, rows) => {
+  // Use distinct values directly from the columns for performance
+  db.all('SELECT DISTINCT fol, ff, provincia, comune, indirizzo FROM arls', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    const options = rows.map(r => {
-      let data = {};
-      try {
-        data = JSON.parse(r.data || '{}');
-      } catch(e) {}
-
-      return {
-        fol: data.FOL ? data.FOL.toString().trim() : '',
-        ff: data.FF ? data.FF.toString().trim() : '',
-        provincia: data.PROVINCIA ? data.PROVINCIA.toString().trim() : '',
-        comune: data.COMUNE ? data.COMUNE.toString().trim() : '',
-        indirizzo: data.INDIRIZZO ? data.INDIRIZZO.toString().trim() : ''
-      };
-    });
+    const options = rows.map(r => ({
+      fol: r.fol || '',
+      ff: r.ff || '',
+      provincia: r.provincia || '',
+      comune: r.comune || '',
+      indirizzo: r.indirizzo || ''
+    }));
     
     res.json(options);
   });
