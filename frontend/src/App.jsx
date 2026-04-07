@@ -1953,6 +1953,16 @@ function App() {
         )}
       </div>
 
+      {/* Drawer per i dettagli (sostituisce il vecchio Popup modale) */}
+      <div className={`side-drawer-overlay ${selectedSite || selectedArl ? 'open' : ''}`} onClick={() => { setSelectedSite(null); setSelectedArl(null); }}></div>
+      <div className={`side-drawer ${(selectedSite || selectedArl) ? 'open' : ''}`}>
+        <button className="drawer-close-btn" onClick={() => { setSelectedSite(null); setSelectedArl(null); }}>&times;</button>
+        <div style={{ padding: '40px 20px 20px 20px' }}>
+          {selectedSite ? renderSiteDetail() : null}
+          {selectedArl ? renderArlDetail() : null}
+        </div>
+      </div>
+
       {/* Modale Aggiunta Nuovo Immobile */}
       {renderAddModal()}
     </div>
