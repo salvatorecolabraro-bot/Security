@@ -13,7 +13,7 @@ function Login({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
       const response = await axios.post(`${apiUrl}/api/login`, { username, password });
       
       const { token, role, username: resUser } = response.data;

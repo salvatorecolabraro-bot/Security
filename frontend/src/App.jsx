@@ -151,7 +151,7 @@ function App() {
       params.append('page', arlPage)
       params.append('limit', 100) // Carichiamo 100 record per pagina
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       const response = await axios.get(`${apiUrl}/api/arls?${params.toString()}`)
       setArls(response.data.data)
       setArlTotalPages(response.data.totalPages)
@@ -171,7 +171,7 @@ function App() {
 
   const fetchArlFilterOptions = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       const response = await axios.get(`${apiUrl}/api/arl-filter-options`)
       setArlFilterOptions(response.data)
     } catch (error) {
@@ -191,7 +191,7 @@ function App() {
 
     setIsImportingArl(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       await axios.post(`${apiUrl}/api/import-arls`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
@@ -224,7 +224,7 @@ function App() {
       if (cityFilter) params.append('city', cityFilter)
       if (denominazioneFilter) params.append('denominazione', denominazioneFilter)
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       const response = await axios.get(`${apiUrl}/api/sites?${params.toString()}`)
       setSites(response.data)
     } catch (error) {
@@ -235,7 +235,7 @@ function App() {
 
   const fetchFilterOptions = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       const response = await axios.get(`${apiUrl}/api/filter-options`)
       setFilterOptions(response.data)
     } catch (error) {
@@ -370,7 +370,7 @@ function App() {
 
     setIsImporting(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       await axios.post(`${apiUrl}/api/import`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
@@ -412,7 +412,7 @@ function App() {
 
     try {
       // Invia i dati al backend
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       await axios.put(`${apiUrl}/api/sites/${newSiteData.site_code}`, newSiteData);
       
       alert("Immobile aggiunto/aggiornato con successo!");
@@ -1193,7 +1193,7 @@ function App() {
             saveBtn.disabled = true;
 
             try {
-              const apiUrl = '${import.meta.env.VITE_API_URL || 'http://localhost:3001'}';
+              const apiUrl = '${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`}';
               const response = await fetch(apiUrl + '/api/sites/' + encodeURIComponent(siteCode), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -1403,9 +1403,9 @@ function App() {
             )}
           </div>
 
-          {/* Sezione Filtri personalizzata per noi, ma integrata nel design */}
-          {(currentPage === 'home' || currentPage === 'arl') && (
-            <div style={{ padding: '15px', borderBottom: '1px solid #e7e7e7', backgroundColor: '#fff' }}>
+            {/* Sezione Filtri personalizzata per noi, ma integrata nel design */}
+            {(currentPage === 'home' || currentPage === 'arl') && (
+              <div style={{ padding: '15px', borderBottom: '1px solid #e7e7e7', backgroundColor: '#fff', overflowY: 'auto', flex: 1 }}>
               <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '10px', textTransform: 'uppercase' }}>Filtri Ricerca</h3>
               
               {currentPage === 'arl' ? (
@@ -1489,7 +1489,8 @@ function App() {
                 onClick={async () => {
                   setIsImporting(true);
                   try {
-                    const response = await axios.post('http://localhost:3001/api/sync');
+                    const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+                    const response = await axios.post(`${apiUrl}/api/sync`);
                     alert("Sincronizzazione completata: " + response.data.message);
                     fetchSites();
                     fetchFilterOptions();
@@ -1518,7 +1519,6 @@ function App() {
               </form>
             </div>
             )}
-
         </aside>
         )}
 
