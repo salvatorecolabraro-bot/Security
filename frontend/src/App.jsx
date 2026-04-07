@@ -105,17 +105,6 @@ function App() {
   const [viewMode, setViewMode] = useState(localStorage.getItem('viewMode') || 'table') // 'card' or 'table'
   const [activeTab, setActiveTab] = useState('anagrafica') // 'anagrafica', 'rete', 'classificazione', 'sicurezza'
   const [currentPage, setCurrentPage] = useState(localStorage.getItem('currentPage') || 'home') // 'home' or 'stats'
-  const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('theme') === 'dark')
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.add('dark-mode')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.body.classList.remove('dark-mode')
-      localStorage.setItem('theme', 'light')
-    }
-  }, [isDarkMode])
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true) // Stato per aprire/chiudere la sidebar
   const [isAddModalOpen, setIsAddModalOpen] = useState(false) // Stato per la modale di aggiunta
@@ -1364,42 +1353,9 @@ function App() {
   }
 
   return (
-    <div className={`app-container ${isDarkMode ? 'dark-mode-app' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: isDarkMode ? '#121212' : '#ffffff', fontFamily: 'Arial, sans-serif' }}>
+    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }}>
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover />
       <style>{`
-        .dark-mode-app {
-          background-color: #121212 !important;
-          color: #e0e0e0 !important;
-        }
-        .dark-mode-app main, .dark-mode-app aside, .dark-mode-app .white-bg {
-          background-color: #1e1e1e !important;
-          border-color: #333 !important;
-          color: #e0e0e0 !important;
-        }
-        .dark-mode-app table {
-          background-color: #1e1e1e !important;
-          color: #e0e0e0 !important;
-        }
-        .dark-mode-app th {
-          background-color: #2c2c2c !important;
-          color: #e0e0e0 !important;
-          border-bottom: 2px solid #444 !important;
-        }
-        .dark-mode-app td {
-          border-bottom: 1px solid #333 !important;
-          color: #e0e0e0 !important;
-        }
-        .dark-mode-app tr {
-          background-color: transparent !important;
-        }
-        .dark-mode-app tr:nth-child(even) {
-          background-color: #252525 !important;
-        }
-        .dark-mode-app input, .dark-mode-app select {
-          background-color: #2c2c2c !important;
-          color: #e0e0e0 !important;
-          border-color: #444 !important;
-        }
         /* Drawer styles */
         .side-drawer-overlay {
           position: fixed;
@@ -1432,11 +1388,6 @@ function App() {
         .side-drawer.open {
           right: 0;
         }
-        .dark-mode-app .side-drawer {
-          background-color: #1e1e1e;
-          box-shadow: -2px 0 8px rgba(0,0,0,0.8);
-          color: #e0e0e0;
-        }
         .drawer-close-btn {
           position: absolute;
           top: 15px;
@@ -1446,9 +1397,6 @@ function App() {
           font-size: 24px;
           cursor: pointer;
           color: #333;
-        }
-        .dark-mode-app .drawer-close-btn {
-          color: #e0e0e0;
         }
       `}</style>
       
@@ -1479,16 +1427,6 @@ function App() {
         {/* Right Info */}
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', padding: '0 15px', borderRight: '1px solid #8e959b' }}>
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)} 
-              style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title={isDarkMode ? "Passa al tema chiaro" : "Passa al tema scuro"}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
-          </div>
-
           {/* Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 15px', borderRight: '1px solid #8e959b' }}>
             {currentPage === 'home' && userRole === 'admin' && (
@@ -1766,7 +1704,7 @@ function App() {
                      </div>
                      <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer url={isDarkMode ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"} />
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         {sites.map(site => {
                           if (site.latitude && site.longitude) {
                             return (
