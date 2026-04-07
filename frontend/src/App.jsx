@@ -1544,7 +1544,7 @@ function App() {
           </div>
 
             {/* Sezione Filtri personalizzata per noi, ma integrata nel design */}
-            {(currentPage === 'home' || currentPage === 'arl') && (
+            {(currentPage === 'home' || currentPage === 'arl' || currentPage === 'stats') && (
               <div style={{ padding: '15px', borderBottom: '1px solid #e7e7e7', backgroundColor: '#fff', overflowY: 'auto', flex: 1 }}>
               <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '10px', textTransform: 'uppercase' }}>Filtri Ricerca</h3>
               
