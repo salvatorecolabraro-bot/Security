@@ -1312,6 +1312,27 @@ function App() {
         {/* Right Info */}
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
           
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 15px', borderRight: '1px solid #8e959b' }}>
+            {currentPage === 'home' && userRole === 'admin' && (
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                style={{ backgroundColor: '#5cb85c', border: '1px solid #4cae4c', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
+              >
+                <span>+</span> Nuovo Impianto
+              </button>
+            )}
+            
+            {(currentPage === 'home' || currentPage === 'arl') && (
+              <button 
+                onClick={handleExportExcel}
+                style={{ backgroundColor: '#f0ad4e', border: '1px solid #eea236', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
+              >
+                <span>⬇️</span> Esporta Excel
+              </button>
+            )}
+          </div>
+
           {/* Anno */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '0 15px' }}>
             <span style={{ fontSize: '12px', marginRight: '5px' }}>Anno:</span>
@@ -1547,24 +1568,8 @@ function App() {
                 </span>
               </div>
 
-              {/* Actions Area (Search & Add) */}
+              {/* Actions Area (Search) */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {userRole === 'admin' && (
-                  <button 
-                    onClick={() => setIsAddModalOpen(true)}
-                    style={{ backgroundColor: '#5cb85c', border: '1px solid #4cae4c', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
-                  >
-                    <span>+</span> Nuovo Immobile
-                  </button>
-                )}
-                
-                <button 
-                  onClick={handleExportExcel}
-                  style={{ backgroundColor: '#f0ad4e', border: '1px solid #eea236', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px' }}
-                >
-                  <span>⬇️</span> Esporta Excel
-                </button>
-
                 <form onSubmit={handleSearch} style={{ display: 'flex', height: '30px' }}>
                   <input 
                     type="text" 
@@ -1636,13 +1641,6 @@ function App() {
                     </button>
                   </form>
                 )}
-                
-                <button 
-                  onClick={handleExportExcel}
-                  style={{ backgroundColor: '#f0ad4e', border: '1px solid #eea236', color: 'white', padding: '0 12px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', borderRadius: '3px', marginRight: '15px' }}
-                >
-                  <span>⬇️</span> Esporta Excel
-                </button>
 
                 <form onSubmit={handleArlSearch} style={{ display: 'flex', height: '30px' }}>
                   <input type="text" placeholder="Cerca ARL..." value={arlSearch} onChange={(e) => setArlSearch(e.target.value)} style={{ border: '1px solid #ccc', borderRight: 'none', padding: '0 10px', fontSize: '13px', width: '200px', outline: 'none' }} />
