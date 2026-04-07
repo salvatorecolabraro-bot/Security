@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import Select from 'react-select'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -11,6 +11,15 @@ import Statistics from './Statistics'
 import * as XLSX from 'xlsx'
 import Login from './Login'
 import UserManagement from './UserManagement'
+
+const ArlMapEvents = ({ onZoomChange }) => {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom());
+    }
+  });
+  return null;
+};
 
 // Fix for default marker icon in react-leaflet
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -129,6 +138,7 @@ function App() {
   const [arlTotalPages, setArlTotalPages] = useState(1)
   const [arlTotalRecords, setArlTotalRecords] = useState(0)
   const [arlViewMode, setArlViewMode] = useState(localStorage.getItem('arlViewMode') || 'table') // 'table' or 'card'
+  const [arlMapZoom, setArlMapZoom] = useState(6)
 
   useEffect(() => {
     localStorage.setItem('arl_filter_fol', arlFolFilter);
@@ -152,8 +162,19 @@ function App() {
       if (arlComuneFilter) params.append('comune', arlComuneFilter)
       if (arlIndirizzoFilter) params.append('indirizzo', arlIndirizzoFilter)
       
+      const isArlFilterActive = arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch;
+      const showArlRegions = arlMapZoom < 8 && !isArlFilterActive;
+
       // Se siamo in modalità mappa, carichiamo tutti i record per la clusterizzazione, altrimenti paginiamo
       if (arlViewMode === 'card') {
+        if (showArlRegions) {
+          // Se mostriamo solo le regioni, non scarichiamo 60k record per risparmiare banda
+          setArls([])
+          setArlTotalPages(1)
+          setArlTotalRecords(0)
+          setLoadingArl(false)
+          return
+        }
         params.append('limit', 'all')
       } else {
         params.append('page', arlPage)
@@ -179,12 +200,12 @@ function App() {
     setLoadingArl(false)
   }
 
-  // Effetto per ricaricare quando cambia la pagina
+  // Effetto per ricaricare quando cambia la pagina o lo zoom della mappa
   useEffect(() => {
     if (currentPage === 'arl') {
       fetchArls()
     }
-  }, [arlPage, arlViewMode])
+  }, [arlPage, arlViewMode, arlMapZoom])
 
   const fetchArlFilterOptions = async () => {
     try {
@@ -1669,7 +1690,7 @@ function App() {
             <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
               {loadingArl ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777' }}>Caricamento ARL in corso...</div>
-              ) : arls.length > 0 ? (
+              ) : arls.length > 0 || (arlViewMode === 'card' && arlMapZoom < 8 && !(arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch)) ? (
                 arlViewMode === 'table' ? (
                   <div>
                     <div style={{ marginBottom: '10px', fontSize: '13px', color: '#555' }}>
@@ -1757,37 +1778,59 @@ function App() {
                     <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <MarkerClusterGroup chunkedLoading>
-                          {arls.map(arl => {
-                            const latToUse = arl.data?.Latitudine || arl.data?.latitudine || arl.latitude;
-                            const lngToUse = arl.data?.Longitudine || arl.data?.longitudine || arl.longitude;
-                            
-                            // Normalize coordinates
-                            const lat = latToUse ? parseFloat(String(latToUse).replace(',', '.')) : null;
-                            const lng = lngToUse ? parseFloat(String(lngToUse).replace(',', '.')) : null;
+                        <ArlMapEvents onZoomChange={setArlMapZoom} />
+                        {(arlMapZoom < 8 && !(arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch)) ? (
+                          [
+                            { name: 'Campania', pos: [40.8518, 14.2681] },
+                            { name: 'Puglia', pos: [41.1171, 16.8719] },
+                            { name: 'Basilicata', pos: [40.6384, 15.8051] },
+                            { name: 'Calabria', pos: [38.9036, 16.5944] },
+                            { name: 'Sicilia', pos: [37.5990, 14.0154] }
+                          ].map(r => (
+                            <Marker
+                              key={r.name}
+                              position={r.pos}
+                              icon={L.divIcon({
+                                className: 'custom-region-marker',
+                                html: `<div style="background-color: rgba(51, 122, 183, 0.8); border: 2px solid white; border-radius: 50%; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.3); transition: all 0.3s ease;">${r.name}</div>`,
+                                iconSize: [90, 90],
+                                iconAnchor: [45, 45]
+                              })}
+                            />
+                          ))
+                        ) : (
+                          <MarkerClusterGroup chunkedLoading>
+                            {arls.map(arl => {
+                              const latToUse = arl.data?.Latitudine || arl.data?.latitudine || arl.latitude;
+                              const lngToUse = arl.data?.Longitudine || arl.data?.longitudine || arl.longitude;
+                              
+                              // Normalize coordinates
+                              const lat = latToUse ? parseFloat(String(latToUse).replace(',', '.')) : null;
+                              const lng = lngToUse ? parseFloat(String(lngToUse).replace(',', '.')) : null;
 
-                            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                              return (
-                                <Marker key={arl.codice_sito} position={[lat, lng]}>
-                                  <Popup>
-                                    <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
-                                    <button onClick={async () => {
-                                      try {
-                                        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
-                                        const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
-                                        setSelectedArl(res.data);
-                                      } catch (err) {
-                                        console.error('Errore nel recupero dettagli ARL:', err);
-                                        alert('Impossibile caricare i dettagli.');
-                                      }
-                                    }} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
-                                  </Popup>
-                                </Marker>
-                              )
-                            }
-                            return null;
-                          })}
-                        </MarkerClusterGroup>
+                              if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                                return (
+                                  <Marker key={arl.codice_sito} position={[lat, lng]}>
+                                    <Popup>
+                                      <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
+                                      <button onClick={async () => {
+                                        try {
+                                          const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+                                          const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
+                                          setSelectedArl(res.data);
+                                        } catch (err) {
+                                          console.error('Errore nel recupero dettagli ARL:', err);
+                                          alert('Impossibile caricare i dettagli.');
+                                        }
+                                      }} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
+                                    </Popup>
+                                  </Marker>
+                                )
+                              }
+                              return null;
+                            })}
+                          </MarkerClusterGroup>
+                        )}
                       </MapContainer>
                     </div>
                   </div>
