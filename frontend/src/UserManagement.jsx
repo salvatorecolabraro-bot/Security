@@ -14,7 +14,10 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await axios.get(`${apiUrl}/api/users`);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${apiUrl}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setUsers(response.data);
     } catch (err) {
       setError("Errore nel caricamento della lista utenti.");
@@ -33,7 +36,10 @@ export default function UserManagement() {
     setSuccess('');
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      await axios.post(`${apiUrl}/api/users`, { username, password, role });
+      const token = localStorage.getItem('token');
+      await axios.post(`${apiUrl}/api/users`, { username, password, role }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setSuccess(`Utente "${username}" creato con successo!`);
       setUsername('');
       setPassword('');
@@ -52,7 +58,10 @@ export default function UserManagement() {
     setSuccess('');
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      await axios.delete(`${apiUrl}/api/users/${id}`);
+      const token = localStorage.getItem('token');
+      await axios.delete(`${apiUrl}/api/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setSuccess(`Utente "${name}" eliminato.`);
       fetchUsers();
     } catch (err) {
