@@ -542,6 +542,37 @@ app.get('/api/arls', (req, res) => {
   const countQuery = 'SELECT COUNT(*) as total' + baseQuery;
   const dataQuery = 'SELECT codice_sito, latitude, longitude, data' + baseQuery + ' LIMIT ? OFFSET ?';
 
+  if (limit === 'all') {
+    // Modalità Mappa: nessun limite, scarichiamo solo le coordinate e i campi indicizzati per massima velocità
+    const mapQuery = `SELECT codice_sito, latitude, longitude, fol, ff, provincia, comune, indirizzo, json_extract(data, '$.CENTRALE') as centrale ${baseQuery}`;
+    db.all(mapQuery, params, (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      // Costruiamo un finto "data" per mantenere la compatibilità col frontend
+      const formattedRows = rows.map(r => ({
+        codice_sito: r.codice_sito,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        data: { 
+          CENTRALE: r.centrale,
+          FOL: r.fol,
+          FF: r.ff,
+          PROVINCIA: r.provincia,
+          COMUNE: r.comune,
+          INDIRIZZO: r.indirizzo
+        }
+      }));
+
+      res.json({
+        data: formattedRows,
+        total: rows.length,
+        page: 1,
+        totalPages: 1
+      });
+    });
+    return;
+  }
+
   db.get(countQuery, params, (err, countRow) => {
     if (err) return res.status(500).json({ error: err.message });
     
@@ -563,6 +594,18 @@ app.get('/api/arls', (req, res) => {
         totalPages: Math.ceil(total / limit)
       });
     });
+  });
+});
+
+// API: Get single ARL by ID
+app.get('/api/arls/:id', (req, res) => {
+  const { id } = req.params;
+  db.get('SELECT * FROM arls WHERE codice_sito = ?', [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'ARL non trovato' });
+    
+    row.data = JSON.parse(row.data || '{}');
+    res.json(row);
   });
 });
 

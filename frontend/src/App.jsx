@@ -151,14 +151,28 @@ function App() {
       if (arlProvinciaFilter) params.append('provincia', arlProvinciaFilter)
       if (arlComuneFilter) params.append('comune', arlComuneFilter)
       if (arlIndirizzoFilter) params.append('indirizzo', arlIndirizzoFilter)
-      params.append('page', arlPage)
-      params.append('limit', 100) // Carichiamo 100 record per pagina
+      
+      // Se siamo in modalità mappa, carichiamo tutti i record per la clusterizzazione, altrimenti paginiamo
+      if (arlViewMode === 'card') {
+        params.append('limit', 'all')
+      } else {
+        params.append('page', arlPage)
+        params.append('limit', 100) // Carichiamo 100 record per pagina
+      }
 
       const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
       const response = await axios.get(`${apiUrl}/api/arls?${params.toString()}`)
-      setArls(response.data.data)
-      setArlTotalPages(response.data.totalPages)
-      setArlTotalRecords(response.data.total)
+      
+      if (arlViewMode === 'card') {
+        // Modalità mappa: sovrascriviamo la paginazione con un'unica pagina enorme
+        setArls(response.data.data)
+        setArlTotalPages(1)
+        setArlTotalRecords(response.data.total)
+      } else {
+        setArls(response.data.data)
+        setArlTotalPages(response.data.totalPages)
+        setArlTotalRecords(response.data.total)
+      }
     } catch (error) {
       console.error("Errore nel caricamento degli ARL", error)
     }
@@ -170,7 +184,7 @@ function App() {
     if (currentPage === 'arl') {
       fetchArls()
     }
-  }, [arlPage])
+  }, [arlPage, arlViewMode])
 
   const fetchArlFilterOptions = async () => {
     try {
@@ -664,7 +678,16 @@ function App() {
   const renderArlCard = (arl) => {
     const data = arl.data || {};
     return (
-      <div key={arl.codice_sito} style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #ddd', padding: '15px', cursor: 'pointer' }} onClick={() => setSelectedArl(arl)}>
+      <div key={arl.codice_sito} style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #ddd', padding: '15px', cursor: 'pointer' }} onClick={async () => {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+          const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
+          setSelectedArl(res.data);
+        } catch (err) {
+          console.error('Errore nel recupero dettagli ARL:', err);
+          alert('Impossibile caricare i dettagli.');
+        }
+      }}>
         <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold', color: '#000' }}>
           [{arl.codice_sito}] Centrale: {data.CENTRALE || 'N/A'}
         </h3>
@@ -1750,7 +1773,16 @@ function App() {
                                 <Marker key={arl.codice_sito} position={[lat, lng]}>
                                   <Popup>
                                     <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
-                                    <button onClick={() => setSelectedArl(arl)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
+                                    <button onClick={async () => {
+                                      try {
+                                        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+                                        const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
+                                        setSelectedArl(res.data);
+                                      } catch (err) {
+                                        console.error('Errore nel recupero dettagli ARL:', err);
+                                        alert('Impossibile caricare i dettagli.');
+                                      }
+                                    }} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
                                   </Popup>
                                 </Marker>
                               )
