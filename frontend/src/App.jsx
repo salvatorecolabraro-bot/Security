@@ -108,7 +108,6 @@ function App() {
   const [arlFileData, setArlFileData] = useState(null)
   const [isImportingArl, setIsImportingArl] = useState(false)
   const [arls, setArls] = useState([])
-  const [arlSearch, setArlSearch] = useState('')
   const [loadingArl, setLoadingArl] = useState(false)
   
   // Stati filtri ARL
