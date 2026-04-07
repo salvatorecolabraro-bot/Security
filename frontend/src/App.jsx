@@ -171,13 +171,26 @@ function App() {
 
   const fetchArlFilterOptions = async () => {
     try {
+      const params = new URLSearchParams()
+      if (arlFolFilter) params.append('fol', arlFolFilter)
+      if (arlFfFilter) params.append('ff', arlFfFilter)
+      if (arlProvinciaFilter) params.append('provincia', arlProvinciaFilter)
+      if (arlComuneFilter) params.append('comune', arlComuneFilter)
+      
       const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`
-      const response = await axios.get(`${apiUrl}/api/arl-filter-options`)
+      const response = await axios.get(`${apiUrl}/api/arl-filter-options?${params.toString()}`)
       setArlFilterOptions(response.data)
     } catch (error) {
       console.error("Errore nel caricamento delle opzioni filtro ARL", error)
     }
   }
+
+  // Refetch options when filters change
+  useEffect(() => {
+    if (currentPage === 'arl') {
+      fetchArlFilterOptions()
+    }
+  }, [arlFolFilter, arlFfFilter, arlProvinciaFilter, arlComuneFilter, currentPage])
 
   const handleArlUpload = async (e) => {
     e.preventDefault()
@@ -254,7 +267,6 @@ function App() {
     } else if (currentPage === 'arl') {
       setArlPage(1) // Reset page on tab switch
       fetchArls()
-      fetchArlFilterOptions()
     }
   }, [currentPage])
 
@@ -305,38 +317,30 @@ function App() {
       .map(o => o.denominazione).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
   ];
 
-  // Derived options for ARL cascading dropdowns (FOL, FF, Provincia, Comune, Indirizzo)
+  // Derived options for ARL cascading dropdowns (loaded from backend)
   const availableArlFol = [
     { value: '', label: 'Tutti i FOL' },
-    ...[...new Set(arlFilterOptions.map(o => o.fol).filter(Boolean))].sort().map(r => ({ value: r, label: r }))
+    ...(arlFilterOptions.fol || []).map(r => ({ value: r, label: r }))
   ];
 
   const availableArlFf = [
     { value: '', label: 'Tutti i FF' },
-    ...[...new Set(arlFilterOptions
-      .filter(o => !arlFolFilter || o.fol === arlFolFilter)
-      .map(o => o.ff).filter(Boolean))].sort().map(p => ({ value: p, label: p }))
+    ...(arlFilterOptions.ff || []).map(p => ({ value: p, label: p }))
   ];
 
   const availableArlProvincia = [
     { value: '', label: 'Tutte le Province' },
-    ...[...new Set(arlFilterOptions
-      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter))
-      .map(o => o.provincia).filter(Boolean))].sort().map(c => ({ value: c, label: c }))
+    ...(arlFilterOptions.provincia || []).map(c => ({ value: c, label: c }))
   ];
 
   const availableArlComune = [
     { value: '', label: 'Tutti i Comuni' },
-    ...[...new Set(arlFilterOptions
-      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter) && (!arlProvinciaFilter || o.provincia === arlProvinciaFilter))
-      .map(o => o.comune).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
+    ...(arlFilterOptions.comune || []).map(d => ({ value: d, label: d }))
   ];
 
   const availableArlIndirizzo = [
     { value: '', label: 'Tutti gli Indirizzi' },
-    ...[...new Set(arlFilterOptions
-      .filter(o => (!arlFolFilter || o.fol === arlFolFilter) && (!arlFfFilter || o.ff === arlFfFilter) && (!arlProvinciaFilter || o.provincia === arlProvinciaFilter) && (!arlComuneFilter || o.comune === arlComuneFilter))
-      .map(o => o.indirizzo).filter(Boolean))].sort().map(d => ({ value: d, label: d }))
+    ...(arlFilterOptions.indirizzo || []).map(d => ({ value: d, label: d }))
   ];
 
   const customSelectStyles = {

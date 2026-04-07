@@ -566,22 +566,49 @@ app.get('/api/arls', (req, res) => {
   });
 });
 
-// API: Get filter options for ARLs
+// API: Get filter options for ARLs (Dynamic Cascading)
 app.get('/api/arl-filter-options', (req, res) => {
-  // Use distinct values directly from the columns for performance, removing empty/null values
-  db.all('SELECT DISTINCT fol, ff, provincia, comune, indirizzo FROM arls WHERE fol != "" OR ff != "" OR provincia != "" OR comune != "" OR indirizzo != ""', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const { fol, ff, provincia, comune } = req.query;
+
+  // Costruiamo le query condizionali per replicare il comportamento a cascata
+  const getQuery = (field, filters) => {
+    let q = `SELECT DISTINCT ${field} as val FROM arls WHERE ${field} IS NOT NULL AND ${field} != ''`;
+    const params = [];
+    if (filters.fol) { q += ' AND fol = ?'; params.push(filters.fol); }
+    if (filters.ff) { q += ' AND ff = ?'; params.push(filters.ff); }
+    if (filters.provincia) { q += ' AND provincia = ?'; params.push(filters.provincia); }
+    if (filters.comune) { q += ' AND comune = ?'; params.push(filters.comune); }
+    q += ` ORDER BY ${field} ASC`;
+    return { q, params };
+  };
+
+  const queries = [
+    getQuery('fol', {}), // FOL vede sempre tutti i FOL
+    getQuery('ff', { fol }), // FF è filtrato da FOL
+    getQuery('provincia', { fol, ff }), // Provincia è filtrata da FOL e FF
+    getQuery('comune', { fol, ff, provincia }), // Comune è filtrato da FOL, FF, Provincia
+    getQuery('indirizzo', { fol, ff, provincia, comune }) // Indirizzo è filtrato da tutti i precedenti
+  ];
+
+  const results = {
+    fol: [], ff: [], provincia: [], comune: [], indirizzo: []
+  };
+
+  const runQuery = (index) => {
+    if (index >= queries.length) {
+      return res.json(results);
+    }
+    const queryObj = queries[index];
+    const key = Object.keys(results)[index];
     
-    const options = rows.map(r => ({
-      fol: r.fol || '',
-      ff: r.ff || '',
-      provincia: r.provincia || '',
-      comune: r.comune || '',
-      indirizzo: r.indirizzo || ''
-    }));
-    
-    res.json(options);
-  });
+    db.all(queryObj.q, queryObj.params, (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      results[key] = rows.map(r => r.val);
+      runQuery(index + 1);
+    });
+  };
+
+  runQuery(0);
 });
 
 // API: Get all sites (with search/filter)
