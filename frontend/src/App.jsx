@@ -7,6 +7,7 @@ import L from 'leaflet'
 import Statistics from './Statistics'
 import * as XLSX from 'xlsx'
 import Login from './Login'
+import UserManagement from './UserManagement'
 
 // Fix for default marker icon in react-leaflet
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -1388,8 +1389,22 @@ function App() {
                 <span style={{ fontWeight: currentPage === 'stats' ? 'bold' : 'normal' }}>Statistiche</span>
               </div>
             </div>
-            
-            {/* Sezione Filtri personalizzata per noi, ma integrata nel design */}
+
+            {userRole === 'admin' && (
+              <div 
+                style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'users' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'users' ? '#eee' : 'transparent' }}
+                onClick={() => setCurrentPage('users')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span>👥</span>
+                  <span style={{ fontWeight: currentPage === 'users' ? 'bold' : 'normal' }}>Gestione Utenti</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sezione Filtri personalizzata per noi, ma integrata nel design */}
+          {(currentPage === 'home' || currentPage === 'arl') && (
             <div style={{ padding: '15px', borderBottom: '1px solid #e7e7e7', backgroundColor: '#fff' }}>
               <h3 style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', marginBottom: '10px', textTransform: 'uppercase' }}>Filtri Ricerca</h3>
               
@@ -1463,6 +1478,7 @@ function App() {
                 </form>
               )}
             </div>
+          )}
 
             {/* Sezione Importa personalizzata */}
             {userRole === 'admin' && (
@@ -1753,7 +1769,22 @@ function App() {
                 </div>
               )}
             </div>
-          </main>
+          </div>
+        ) : currentPage === 'users' && userRole === 'admin' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+            <div style={{ height: '50px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', backgroundColor: '#ffffff', flexShrink: 0 }}>
+              <div style={{ fontSize: '13px', color: '#337ab7', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ color: '#555', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setCurrentPage('home')}>
+                  🏠 Home
+                </span>
+                <span style={{ color: '#ccc' }}>&gt;</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ color: '#555' }}>👥</span> Gestione Utenti
+                </span>
+              </div>
+            </div>
+            <UserManagement />
+          </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
             {/* Top Bar for Statistics Page to match main layout */}

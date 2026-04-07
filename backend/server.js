@@ -58,6 +58,46 @@ app.post('/api/login', (req, res) => {
   });
 });
 
+// API: Gestione Utenti (Admin only)
+app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
+  db.all("SELECT id, username, role FROM users", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/users', authenticateToken, requireAdmin, (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password || !role) {
+    return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(password, salt);
+
+  db.run("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", [username, hash, role], function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE')) {
+        return res.status(400).json({ error: 'Username già in uso' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ id: this.lastID, username, role });
+  });
+});
+
+app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+  if (req.user.id === userId) {
+    return res.status(400).json({ error: 'Non puoi eliminare il tuo stesso account' });
+  }
+
+  db.run("DELETE FROM users WHERE id = ?", [userId], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Utente eliminato' });
+  });
+});
+
 // Function to safely extract float
 const parseFloatSafe = (val) => {
   if (!val) return null;
