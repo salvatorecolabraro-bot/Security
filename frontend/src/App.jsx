@@ -1386,7 +1386,7 @@ function App() {
           </div>
 
           {/* Menu items (Simulated) */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div>
             <div 
               style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'home' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'home' ? '#eee' : 'transparent' }}
               onClick={() => setCurrentPage('home')}
@@ -1397,21 +1397,21 @@ function App() {
               </div>
             </div>
             <div 
-              style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'arl' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'arl' ? '#eee' : 'transparent' }}
-              onClick={() => setCurrentPage('arl')}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: '15px' }}>
-                <span>🔌</span>
-                <span style={{ fontWeight: currentPage === 'arl' ? 'bold' : 'normal' }}>Gestione ARL</span>
-              </div>
-            </div>
-            <div 
               style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'stats' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'stats' ? '#eee' : 'transparent' }}
               onClick={() => setCurrentPage('stats')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span>📊</span>
                 <span style={{ fontWeight: currentPage === 'stats' ? 'bold' : 'normal' }}>Statistiche</span>
+              </div>
+            </div>
+            <div 
+              style={{ padding: '12px 15px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: currentPage === 'arl' ? '#337ab7' : '#555', fontSize: '13px', backgroundColor: currentPage === 'arl' ? '#eee' : 'transparent' }}
+              onClick={() => setCurrentPage('arl')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>🔌</span>
+                <span style={{ fontWeight: currentPage === 'arl' ? 'bold' : 'normal' }}>Gestione ARL</span>
               </div>
             </div>
 
