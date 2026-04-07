@@ -1427,27 +1427,27 @@ function App() {
         {isSidebarOpen && (
         <aside style={{ width: '220px', backgroundColor: '#f9f9f9', borderRight: '1px solid #e7e7e7', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           
-          {/* Top Buttons */}
+          {/* Top Buttons (Nascondiamo tutto se siamo in ARL, altrimenti mostriamo Tabella, Mappa, Statistiche) */}
           <div style={{ display: 'flex', height: '40px' }}>
-            <button 
-              style={{ flex: 1, backgroundColor: '#5cb85c', border: 'none', borderRight: '1px solid #4cae4c', color: 'white', cursor: 'pointer' }} 
-              onClick={() => { 
-                if (currentPage === 'arl') { setArlViewMode('table'); } 
-                else { setCurrentPage('home'); setViewMode('table'); }
-              }}
-            >📋</button>
-            <button 
-              style={{ flex: 1, backgroundColor: '#5bc0de', border: 'none', borderRight: currentPage !== 'arl' ? '1px solid #46b8da' : 'none', color: 'white', cursor: 'pointer' }} 
-              onClick={() => { 
-                if (currentPage === 'arl') { setArlViewMode('card'); } 
-                else { setCurrentPage('home'); setViewMode('card'); }
-              }}
-            >🌍</button>
             {currentPage !== 'arl' && (
-              <button 
-                style={{ flex: 1, backgroundColor: '#d9534f', border: 'none', color: 'white', cursor: 'pointer' }} 
-                onClick={() => setCurrentPage('stats')}
-              >📊</button>
+              <>
+                <button 
+                  style={{ flex: 1, backgroundColor: '#5cb85c', border: 'none', borderRight: '1px solid #4cae4c', color: 'white', cursor: 'pointer' }} 
+                  onClick={() => { 
+                    setCurrentPage('home'); setViewMode('table');
+                  }}
+                >📋</button>
+                <button 
+                  style={{ flex: 1, backgroundColor: '#5bc0de', border: 'none', borderRight: '1px solid #46b8da', color: 'white', cursor: 'pointer' }} 
+                  onClick={() => { 
+                    setCurrentPage('home'); setViewMode('card');
+                  }}
+                >🌍</button>
+                <button 
+                  style={{ flex: 1, backgroundColor: '#d9534f', border: 'none', color: 'white', cursor: 'pointer' }} 
+                  onClick={() => setCurrentPage('stats')}
+                >📊</button>
+              </>
             )}
           </div>
 
@@ -1709,8 +1709,7 @@ function App() {
             <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
               {loadingArl ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777' }}>Caricamento ARL in corso...</div>
-              ) : arls.length > 0 || (arlViewMode === 'card' && arlMapZoom < 8 && !(arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch)) ? (
-                arlViewMode === 'table' ? (
+              ) : arls.length > 0 ? (
                   <div>
                     <div style={{ marginBottom: '10px', fontSize: '13px', color: '#555' }}>
                       Trovati <strong>{arlTotalRecords}</strong> ARL
@@ -1744,7 +1743,16 @@ function App() {
                               <td style={{ padding: '8px 15px', textAlign: 'right' }}>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '2px' }}>
                                   <button 
-                                    onClick={() => setSelectedArl(arl)} 
+                                    onClick={async () => {
+                                      try {
+                                        const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+                                        const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
+                                        setSelectedArl(res.data);
+                                      } catch (err) {
+                                        console.error('Errore nel recupero dettagli ARL:', err);
+                                        alert('Impossibile caricare i dettagli.');
+                                      }
+                                    }}
                                     style={{ backgroundColor: '#5bc0de', color: 'white', border: 'none', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', borderRadius: '2px' }}
                                     title="Dettagli"
                                   >
@@ -1780,80 +1788,6 @@ function App() {
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', height: '100%' }}>
-                    <div style={{ width: '33%', height: '100%', overflowY: 'auto', paddingRight: '10px' }}>
-                      <div style={{ marginBottom: '10px', fontSize: '13px', color: '#555' }}>
-                        Trovati <strong>{arlTotalRecords}</strong> ARL (Mostrando pagina {arlPage})
-                      </div>
-                      {arls.map(renderArlCard)}
-                      {arlTotalPages > 1 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px', paddingBottom: '15px' }}>
-                          <button onClick={() => setArlPage(p => Math.max(1, p - 1))} disabled={arlPage === 1} style={{ padding: '5px 10px', cursor: arlPage === 1 ? 'not-allowed' : 'pointer' }}>Precedente</button>
-                          <button onClick={() => setArlPage(p => Math.min(arlTotalPages, p + 1))} disabled={arlPage === arlTotalPages} style={{ padding: '5px 10px', cursor: arlPage === arlTotalPages ? 'not-allowed' : 'pointer' }}>Successiva</button>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
-                      <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <ArlMapEvents onZoomChange={setArlMapZoom} onBoundsChange={setArlMapBounds} />
-                        {(arlMapZoom < 8 && !(arlFolFilter || arlFfFilter || arlProvinciaFilter || arlComuneFilter || arlIndirizzoFilter || arlSearch)) ? (
-                          [
-                            { name: 'Campania', pos: [40.8518, 14.2681] },
-                            { name: 'Puglia', pos: [41.1171, 16.8719] },
-                            { name: 'Basilicata', pos: [40.6384, 15.8051] },
-                            { name: 'Calabria', pos: [38.9036, 16.5944] },
-                            { name: 'Sicilia', pos: [37.5990, 14.0154] }
-                          ].map(r => (
-                            <Marker
-                              key={r.name}
-                              position={r.pos}
-                              icon={L.divIcon({
-                                className: 'custom-region-marker',
-                                html: `<div style="background-color: rgba(51, 122, 183, 0.8); border: 2px solid white; border-radius: 50%; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.3); transition: all 0.3s ease;">${r.name}</div>`,
-                                iconSize: [90, 90],
-                                iconAnchor: [45, 45]
-                              })}
-                            />
-                          ))
-                        ) : (
-                          <MarkerClusterGroup chunkedLoading>
-                            {arls.map(arl => {
-                              const latToUse = arl.data?.Latitudine || arl.data?.latitudine || arl.latitude;
-                              const lngToUse = arl.data?.Longitudine || arl.data?.longitudine || arl.longitude;
-                              
-                              // Normalize coordinates
-                              const lat = latToUse ? parseFloat(String(latToUse).replace(',', '.')) : null;
-                              const lng = lngToUse ? parseFloat(String(lngToUse).replace(',', '.')) : null;
-
-                              if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                                return (
-                                  <Marker key={arl.codice_sito} position={[lat, lng]}>
-                                    <Popup>
-                                      <strong>[{arl.codice_sito}]</strong><br/>{arl.data?.CENTRALE || 'N/A'}<br/>
-                                      <button onClick={async () => {
-                                        try {
-                                          const apiUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
-                                          const res = await axios.get(`${apiUrl}/api/arls/${encodeURIComponent(arl.codice_sito)}`);
-                                          setSelectedArl(res.data);
-                                        } catch (err) {
-                                          console.error('Errore nel recupero dettagli ARL:', err);
-                                          alert('Impossibile caricare i dettagli.');
-                                        }
-                                      }} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
-                                    </Popup>
-                                  </Marker>
-                                )
-                              }
-                              return null;
-                            })}
-                          </MarkerClusterGroup>
-                        )}
-                      </MapContainer>
-                    </div>
-                  </div>
-                )
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#777', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
                   Nessun ARL trovato. Modifica i filtri o importa il file ARL_SUD.csv per iniziare.
