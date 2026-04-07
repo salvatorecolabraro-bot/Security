@@ -1461,15 +1461,6 @@ function App() {
                     onChange={(s) => setArlIndirizzoFilter(s ? s.value : '')}
                   />
                   <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Cerca ARL..." 
-                      value={arlSearch} 
-                      onChange={(e) => setArlSearch(e.target.value)}
-                      style={{ flex: 1, padding: '6px', border: '1px solid #d1d5db', borderRadius: '3px', fontSize: '11px' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
                     <button type="submit" style={{ flex: 1, backgroundColor: '#337ab7', color: 'white', border: 'none', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Applica</button>
                     <button type="button" onClick={() => { setArlFolFilter(''); setArlFfFilter(''); setArlProvinciaFilter(''); setArlComuneFilter(''); setArlIndirizzoFilter(''); setArlSearch(''); setArlPage(1); fetchArls(); }} style={{ flex: 1, backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', padding: '6px', fontSize: '11px', borderRadius: '3px', cursor: 'pointer' }}>Reset</button>
                   </div>
