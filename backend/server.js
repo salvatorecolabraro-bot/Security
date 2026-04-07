@@ -217,96 +217,79 @@ const processImport = (data) => {
   });
 };
 
-// API: Auto-Sync endpoint (Cerca file specifici nella cartella predefinita)
+// Funzione per sincronizzare da GitHub (riutilizzabile all'avvio e via API)
+const autoSyncFromGithub = async () => {
+  console.log("Inizio controllo aggiornamenti CSV da GitHub...");
+  const githubBaseUrl = 'https://raw.githubusercontent.com/salvatorecolabraro-bot/Security/main';
+  let totalImmobili = 0;
+  let totalArl = 0;
+
+  try {
+    // 1. Sync Immobili
+    console.log("-> Download Immobili da GitHub...");
+    const sitesRes = await fetch(`${githubBaseUrl}/ClassPointSUD_con_coordinate.csv`);
+    if (sitesRes.ok) {
+      const csvText = await sitesRes.text();
+      const parsedSites = Papa.parse(csvText, {
+        header: true, skipEmptyLines: true, dynamicTyping: true,
+        transformHeader: function(header) { return header ? header.trim() : ''; }
+      }).data;
+
+      if (parsedSites && parsedSites.length > 0) {
+        totalImmobili = await processImport(parsedSites);
+        console.log(`✅ Auto-sync GitHub: aggiornati ${totalImmobili} Immobili.`);
+      }
+    } else {
+      console.log("⚠️ File Immobili non trovato su GitHub o errore HTTP:", sitesRes.status);
+    }
+
+    // 2. Sync ARL
+    console.log("-> Download ARL da GitHub...");
+    const arlRes = await fetch(`${githubBaseUrl}/ARL_SUD.csv`);
+    if (arlRes.ok) {
+      const csvText = await arlRes.text();
+      let parsedArls = Papa.parse(csvText, {
+        header: true, skipEmptyLines: true, dynamicTyping: true, delimiter: ";",
+        transformHeader: function(header) { return header ? header.trim() : ''; }
+      });
+
+      if (parsedArls.meta && parsedArls.meta.fields && parsedArls.meta.fields.length === 1 && parsedArls.meta.fields[0].includes(',')) {
+          parsedArls = Papa.parse(csvText, {
+              header: true, skipEmptyLines: true, dynamicTyping: true, delimiter: ",",
+              transformHeader: function(header) { return header ? header.trim() : ''; }
+          });
+      }
+
+      if (parsedArls.data && parsedArls.data.length > 0) {
+        totalArl = await processImportArl(parsedArls.data);
+        console.log(`✅ Auto-sync GitHub: aggiornati ${totalArl} ARL.`);
+      }
+    } else {
+      console.log("⚠️ File ARL non trovato su GitHub o errore HTTP:", arlRes.status);
+    }
+
+    return { success: true, immobili: totalImmobili, arl: totalArl };
+  } catch (e) {
+    console.error("❌ Errore critico durante l'auto-sync da GitHub:", e);
+    throw e;
+  }
+};
+
+// API: Auto-Sync endpoint (Ora sincronizza da GitHub)
 app.post('/api/sync', async (req, res) => {
   try {
-    const defaultDir = 'c:\\Users\\Utente\\OneDrive\\Desktop\\sedi';
-    
-    // Cerchiamo il nuovo file unificato
-    const possibleNames = ['ClassPointSUD_con_coordinate.csv', 'ClassPointSUD_con_coordinate.xlsx', 'classpoint.csv', 'classpoint.xlsx'];
-    
-    let filePath = null;
-
-    // Cerca il file
-    for (const name of possibleNames) {
-      const p = path.join(defaultDir, name);
-      if (fs.existsSync(p)) {
-        filePath = p;
-        break;
-      }
-    }
-
-    if (!filePath) {
-      // Prova a cercarlo nella root del progetto
-      const rootDir = path.resolve(__dirname, '..');
-      for (const name of possibleNames) {
-        const p = path.join(rootDir, name);
-        if (fs.existsSync(p)) {
-          filePath = p;
-          break;
-        }
-      }
-    }
-
-    if (!filePath) {
-      return res.status(404).json({ error: 'Nessun file ClassPointSUD_con_coordinate trovato.' });
-    }
-
-    console.log(`Trovato file unificato: ${filePath}`);
-    const parsedData = parseFile(filePath, path.basename(filePath));
-
-    const count = await processImport(parsedData);
-    res.json({ message: 'Sincronizzazione automatica completata con successo', count: count });
-
+    const result = await autoSyncFromGithub();
+    res.json({ 
+      message: `Sincronizzazione da GitHub completata con successo! Immobili: ${result.immobili}, ARL: ${result.arl}`,
+      count: result.immobili 
+    });
   } catch (error) {
-    console.error("Errore durante la sincronizzazione automatica:", error);
-    res.status(500).json({ error: 'Errore durante la sincronizzazione automatica: ' + error.message });
+    console.error(error);
+    res.status(500).json({ error: 'Errore durante la sincronizzazione da GitHub: ' + error.message });
   }
 });
 
-// Esegui la sincronizzazione automatica all'avvio del server
-const autoSyncOnStartup = async () => {
-  console.log("Esecuzione sincronizzazione automatica dei CSV all'avvio...");
-  const defaultDir = 'c:\\Users\\Utente\\OneDrive\\Desktop\\sedi';
-  
-  const possibleNames = ['ClassPointSUD_con_coordinate.csv', 'ClassPointSUD_con_coordinate.xlsx', 'classpoint.csv', 'classpoint.xlsx'];
-  
-  let filePath = null;
-
-  for (const name of possibleNames) {
-    const p = path.join(defaultDir, name);
-    if (fs.existsSync(p)) { filePath = p; break; }
-  }
-
-  if (!filePath) {
-    const rootDir = path.resolve(__dirname, '..');
-    for (const name of possibleNames) {
-      const p = path.join(rootDir, name);
-      if (fs.existsSync(p)) {
-        filePath = p;
-        break;
-      }
-    }
-  }
-
-  try {
-    if (filePath) {
-      const parsedData = parseFile(filePath, path.basename(filePath));
-      if (parsedData.length > 0) {
-        const count = await processImport(parsedData);
-        console.log(`Auto-sync completato. Caricati/Aggiornati ${count} record dal disco.`);
-      } else {
-        console.log("Il file è vuoto.");
-      }
-    } else {
-      console.log("Nessun file unificato trovato per la sincronizzazione iniziale.");
-    }
-  } catch (e) {
-    console.error("Errore durante l'auto-sync all'avvio:", e);
-  }
-};
-// Chiamata immediata all'avvio
-autoSyncOnStartup();
+// (Sincronizzazione GitHub spostata alla fine del file)
 
 
 // API: Import Excel Manuale
@@ -861,4 +844,6 @@ app.get('/api/stats', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server backend in ascolto sulla porta ${PORT}`);
+  // Avvia la sincronizzazione in background subito dopo che il server è partito
+  autoSyncFromGithub().catch(console.error);
 });
