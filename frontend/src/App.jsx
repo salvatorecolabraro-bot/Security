@@ -1616,21 +1616,19 @@ function App() {
                      <div style={{ width: '66%', height: '100%', backgroundColor: '#eee', border: '1px solid #ddd' }}>
                       <MapContainer center={[40.85, 14.26]} zoom={6} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <MarkerClusterGroup chunkedLoading>
-                          {sites.map(site => {
-                            if (site.latitude && site.longitude) {
-                              return (
-                                <Marker key={site.site_code} position={[site.latitude, site.longitude]}>
-                                  <Popup>
-                                    <strong>[{site.site_code}]</strong><br/>{site.merged_data?.Nome || 'Sito'}<br/>
-                                    <button onClick={() => setSelectedSite(site)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
-                                  </Popup>
-                                </Marker>
-                              )
-                            }
-                            return null;
-                          })}
-                        </MarkerClusterGroup>
+                        {sites.map(site => {
+                          if (site.latitude && site.longitude) {
+                            return (
+                              <Marker key={site.site_code} position={[site.latitude, site.longitude]}>
+                                <Popup>
+                                  <strong>[{site.site_code}]</strong><br/>{site.merged_data?.Nome || 'Sito'}<br/>
+                                  <button onClick={() => setSelectedSite(site)} style={{ color: '#337ab7', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', marginTop: '5px' }}>Vedi dettagli</button>
+                                </Popup>
+                              </Marker>
+                            )
+                          }
+                          return null;
+                        })}
                       </MapContainer>
                     </div>
                    </div>
