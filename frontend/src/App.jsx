@@ -1519,7 +1519,6 @@ function App() {
             </div>
             )}
 
-          </div>
         </aside>
         )}
 
@@ -1769,7 +1768,7 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
+          </main>
         ) : currentPage === 'users' && userRole === 'admin' ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
             <div style={{ height: '50px', borderBottom: '1px solid #e7e7e7', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', backgroundColor: '#ffffff', flexShrink: 0 }}>
